@@ -10,6 +10,34 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Custom Styling for Market Index Bar & Terminal
+st.markdown("""
+<style>
+    .index-card {
+        background-color: #131c31;
+        border: 1px solid #1e293b;
+        padding: 10px 14px;
+        border-radius: 8px;
+        text-align: center;
+        font-family: monospace;
+    }
+    .index-name {
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .index-val {
+        color: #f1f5f9;
+        font-size: 15px;
+        font-weight: 700;
+        margin-top: 2px;
+    }
+    .pos { color: #22c55e; font-size: 12px; font-weight: 600; }
+    .neg { color: #ef4444; font-size: 12px; font-weight: 600; }
+</style>
+""", unsafe_allow_html=True)
+
 # Nifty 100 Master Watchlist
 NIFTY_100_TICKERS = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
@@ -35,6 +63,47 @@ NIFTY_100_TICKERS = [
 st.title("⚡ Nifty 100 Pro Market Terminal")
 st.caption("Live professional stock screener with 30D/60D sparklines, sortable headers, technical recommendations, and analyst news links.")
 
+# Fetch Global & Domestic Indices Function
+@st.cache_data(ttl=300)
+def fetch_indices():
+    index_tickers = {
+        "Nifty 50": "^NSEI",
+        "Bank Nifty": "^NSEBANK",
+        "India VIX": "^INDIAVIX",
+        "Nasdaq": "^IXIC",
+        "Dow Jones": "^DJI"
+    }
+    data = {}
+    for name, ticker in index_tickers.items():
+        try:
+            hist = yf.Ticker(ticker).history(period="2d")
+            if len(hist) >= 2:
+                curr = float(hist['Close'].iloc[-1])
+                prev = float(hist['Close'].iloc[-2])
+                chg = ((curr - prev) / prev) * 100
+                data[name] = {"val": curr, "chg": chg}
+        except Exception:
+            continue
+    return data
+
+# Render Indices Header Bar in the Highlighted Area
+indices_data = fetch_indices()
+if indices_data:
+    cols = st.columns(5)
+    for i, (name, info) in enumerate(indices_data.items()):
+        with cols[i]:
+            chg_class = "pos" if info["chg"] >= 0 else "neg"
+            sign = "+" if info["chg"] >= 0 else ""
+            st.markdown(f"""
+                <div class="index-card">
+                    <div class="index-name">{name}</div>
+                    <div class="index-val">{info['val']:,.2f}</div>
+                    <div class="{chg_class}">{sign}{info['chg']:.2f}%</div>
+                </div>
+            """, unsafe_allow_html=True)
+
+st.divider()
+
 col_btn1, col_btn2 = st.columns([1, 5])
 with col_btn1:
     if st.button("🔄 Refresh Data"):
@@ -42,7 +111,6 @@ with col_btn1:
         st.rerun()
 
 def generate_svg_sparkline(prices, label="30D"):
-    """Generates a responsive SVG sparkline with min/max bounds and gradient fill."""
     if not prices or len(prices) < 2:
         return ""
     min_p, max_p = min(prices), max(prices)
@@ -97,7 +165,6 @@ def fetch_terminal_data():
             p30 = closes[-30:]
             p60 = closes[-60:]
             
-            # Technical Indicator: RSI (14)
             delta = data['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -108,7 +175,6 @@ def fetch_terminal_data():
             sma50 = float(data['Close'].rolling(50).mean().iloc[-1])
             p30_ret = ((curr_price - p30[0]) / p30[0]) * 100
             
-            # Algorithmic Recommendation Engine
             if rsi < 35 and curr_price > sma50:
                 signal = "STRONG BUY"
             elif rsi < 45 and p30_ret > 0:
@@ -139,7 +205,6 @@ with st.spinner("Fetching live prices & computing technical signals..."):
 if df.empty:
     st.warning("Could not fetch market data. Please click Refresh.")
 else:
-    # Filter by Signal
     signals_list = ["ALL", "STRONG BUY", "BUY", "HOLD", "SELL"]
     selected_sig = st.selectbox("Filter Recommendation Signal:", signals_list)
     
@@ -150,7 +215,6 @@ else:
 
     st.markdown(f"Displaying **{len(df_filtered)}** stocks")
 
-    # Build HTML Terminal Table with Sorting JavaScript & External Links
     html_content = f"""
     <html>
     <head>
@@ -249,7 +313,6 @@ else:
                     var xVal = x.textContent || x.innerText;
                     var yVal = y.textContent || y.innerText;
                     
-                    // Numeric comparison for price/change
                     var xNum = parseFloat(xVal.replace(/[^0-9.-]+/g,""));
                     var yNum = parseFloat(yVal.replace(/[^0-9.-]+/g,""));
                     
