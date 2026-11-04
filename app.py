@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import streamlit.components.v1 as components
+from datetime import datetime, date
 
 # Page Configuration
 st.set_page_config(
@@ -10,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Styling for Market Index Bar & Terminal
+# Custom Styling for Market Indices Bar
 st.markdown("""
 <style>
     .index-card {
@@ -61,9 +62,9 @@ NIFTY_100_TICKERS = [
 ]
 
 st.title("⚡ Nifty 100 Pro Market Terminal")
-st.caption("Live professional stock screener with 30D/60D sparklines, sortable headers, technical recommendations, and analyst news links.")
+st.caption("Live professional stock screener with 30D/60D sparklines, earnings calendar alerts, technical recommendations, and analyst news links.")
 
-# Fetch Global & Domestic Indices Function
+# Fetch Global & Domestic Indices
 @st.cache_data(ttl=300)
 def fetch_indices():
     index_tickers = {
@@ -86,7 +87,6 @@ def fetch_indices():
             continue
     return data
 
-# Render Indices Header Bar in the Highlighted Area
 indices_data = fetch_indices()
 if indices_data:
     cols = st.columns(5)
@@ -150,9 +150,11 @@ def generate_svg_sparkline(prices, label="30D"):
 def fetch_terminal_data():
     df_raw = yf.download(NIFTY_100_TICKERS, period="70d", interval="1d", group_by="ticker", progress=False)
     
+    today = date.today()
     rows = []
     for ticker in NIFTY_100_TICKERS:
         try:
+            t_obj = yf.Ticker(ticker)
             data = df_raw[ticker].dropna()
             if len(data) < 60:
                 continue
@@ -164,6 +166,22 @@ def fetch_terminal_data():
             
             p30 = closes[-30:]
             p60 = closes[-60:]
+            
+            # Earnings Date Check
+            earnings_date_str = "Not Available"
+            is_released = False
+            try:
+                calendar = t_obj.calendar
+                if calendar is not None and "Earnings Date" in calendar:
+                    ed_list = calendar["Earnings Date"]
+                    if len(ed_list) > 0:
+                        ed = pd.to_datetime(ed_list[0]).date()
+                        earnings_date_str = ed.strftime("%d %b %Y")
+                        # If earnings date is today or in the past 2 days, mark as released/live alert
+                        if (today - ed).days >= 0 and (today - ed).days <= 3:
+                            is_released = True
+            except Exception:
+                pass
             
             delta = data['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
@@ -192,14 +210,16 @@ def fetch_terminal_data():
                 "Change": change_pct,
                 "30D": [float(x) for x in p30],
                 "60D": [float(x) for x in p60],
-                "Signal": signal
+                "Signal": signal,
+                "EarningsDate": earnings_date_str,
+                "IsReleased": is_released
             })
         except Exception:
             continue
             
     return pd.DataFrame(rows)
 
-with st.spinner("Fetching live prices & computing technical signals..."):
+with st.spinner("Fetching live prices, earnings calendar & computing technical signals..."):
     df = fetch_terminal_data()
 
 if df.empty:
@@ -282,6 +302,58 @@ else:
         .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
         .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
         .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        
+        /* Blinking Animation for Released Results */
+        @keyframes glowing-blink {{
+            0% {{ color: #ef4444; text-shadow: 0 0 2px #ef4444; }}
+            50% {{ color: #22c55e; text-shadow: 0 0 8px #22c55e; }}
+            100% {{ color: #38bdf8; text-shadow: 0 0 2px #38bdf8; }}
+        }}
+        .blinking-result {{
+            font-weight: 800;
+            font-size: 12px;
+            animation: glowing-blink 1.2s infinite;
+            background: rgba(56, 189, 248, 0.15);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }}
+        .normal-result {{
+            color: #94a3b8;
+            font-family: monospace;
+            font-size: 12px;
+        }}
+        
+        /* Tooltip styling */
+        .tooltip {{
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }}
+        .tooltip .tooltiptext {{
+            visibility: hidden;
+            width: 210px;
+            background-color: #1e293b;
+            color: #f8fafc;
+            text-align: left;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -105px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 11px;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }}
+        .tooltip:hover .tooltiptext {{
+            visibility: visible;
+            opacity: 1;
+        }}
+
         .ext-link {{
             color: #94a3b8;
             text-decoration: none;
@@ -354,7 +426,7 @@ else:
                 <th>30-Day Trend (₹)</th>
                 <th>60-Day Trend (₹)</th>
                 <th onclick="sortTable(5)">Recommendation ↕</th>
-                <th>Results & Announcements</th>
+                <th onclick="sortTable(6)">Earnings Date / Status ↕</th>
                 <th>Analyst & ZeeBiz News</th>
             </tr>
         </thead>
@@ -378,6 +450,14 @@ else:
         screener_url = f"https://www.screener.in/company/{sym}/consolidated/"
         zeebiz_url = f"https://www.zeebiz.com/search?q={sym}"
         
+        is_rel = row["IsReleased"]
+        ed_val = row["EarningsDate"]
+        
+        if is_rel:
+            earnings_display = f"""<div class="tooltip"><span class="blinking-result">🚨 LIVE RESULT OUT!</span><span class="tooltiptext"><b>{sym} Earnings Released!</b><br>Date: {ed_val}<br>Check quarterly financial results on Screener & Moneycontrol.</span></div>"""
+        else:
+            earnings_display = f"""<div class="tooltip"><span class="normal-result">{ed_val}</span><span class="tooltiptext"><b>{sym} Earnings Calendar</b><br>Scheduled Date: {ed_val}<br>Status: Upcoming / Pending</span></div>"""
+        
         html_content += f"""
             <tr>
                 <td><span class="ticker-symbol">{sym}</span></td>
@@ -387,8 +467,10 @@ else:
                 <td>{svg_60}</td>
                 <td><span class="{badge_class}">{sig}</span></td>
                 <td>
-                    <a href="{screener_url}" target="_blank" class="ext-link">Screener</a>
-                    <a href="https://www.moneycontrol.com/india/stockpricequote/{sym.lower()}/{sym.lower()}" target="_blank" class="ext-link">Moneycontrol</a>
+                    {earnings_display}
+                    <div style="margin-top: 4px;">
+                        <a href="{screener_url}" target="_blank" class="ext-link">Results</a>
+                    </div>
                 </td>
                 <td>
                     <a href="{zeebiz_url}" target="_blank" class="ext-link">ZeeBiz News</a>
@@ -398,4 +480,4 @@ else:
         
     html_content += "</tbody></table></body></html>"
     
-    components.html(html_content, height=820, scrolling=True)
+    components.html(html_content, height=850, scrolling=True)
