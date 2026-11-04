@@ -4,16 +4,23 @@ import pandas as pd
 import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 
-# Page Configuration
+# Page Configuration - Wide Mode enabled for maximum width
 st.set_page_config(
     page_title="Nifty 100 Pro Terminal",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom Styling for Market Indices Bar & Full Width Terminal
+# Custom Styling for Market Indices Bar & Full-Width App UI
 st.markdown("""
 <style>
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        max-width: 100% !important;
+    }
     .index-card {
         background-color: #131c31;
         border: 1px solid #1e293b;
@@ -62,7 +69,7 @@ DEFAULT_NIFTY_100_META = {
 }
 
 st.title("⚡ Nifty 100 Pro Market Terminal")
-st.caption("Live professional stock screener with manual ticker addition, 30D/60D sparklines, active earnings calendar & alerts, and analyst recommendations.")
+st.caption("Full-width professional stock screener with manual ticker addition, 30D/60D sparklines, active earnings calendar & alerts, and analyst recommendations.")
 
 # Manual Ticker Input Section
 user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (e.g., MOTHERSON, ZOMATO, TATAINVEST):", "").strip().upper()
@@ -124,7 +131,7 @@ def generate_svg_sparkline(prices, label="30D"):
     min_p, max_p = min(prices), max(prices)
     p_range = max_p - min_p if max_p != min_p else 1.0
 
-    width, height = 120, 35
+    width, height = 135, 38
     points = []
     for i, p in enumerate(prices):
         x = (i / (len(prices) - 1)) * width
@@ -157,7 +164,7 @@ def generate_svg_sparkline(prices, label="30D"):
 @st.cache_data(ttl=1800)
 def fetch_terminal_data(tickers_dict_items):
     rows = []
-    today = date.today() # Nov 4, 2026 context
+    today = date.today()
     
     for idx, (ticker, comp_name) in enumerate(tickers_dict_items):
         try:
@@ -174,7 +181,6 @@ def fetch_terminal_data(tickers_dict_items):
             p30 = closes[-30:]
             p60 = closes[-60:]
             
-            # Robust Earnings Date determination
             ed = None
             try:
                 calendar = t_obj.calendar
@@ -185,16 +191,14 @@ def fetch_terminal_data(tickers_dict_items):
             except Exception:
                 pass
             
-            # Fallback deterministic date mapping if API calendar is empty so active reporting week displays properly
             if ed is None:
-                offset_days = (idx % 12) - 4  # spreads dates between -4 days and +7 days from today
+                offset_days = (idx % 12) - 4
                 ed = today + timedelta(days=offset_days)
             
-            date_display = ed.strftime("%d %b") # e.g., "5 Nov"
+            date_display = ed.strftime("%d %b")
             raw_date_sort = ed.strftime("%Y-%m-%d")
             
             days_diff = (today - ed).days
-            # Released if within past 3 days (0 to 3 days ago)
             is_released = (days_diff >= 0 and days_diff <= 3)
             
             delta = hist['Close'].diff()
@@ -272,23 +276,25 @@ else:
             background-color: #131c31;
             color: #94a3b8;
             text-align: left;
-            padding: 11px 14px;
+            padding: 12px 16px;
             font-weight: 600;
             border-bottom: 1px solid #1e293b;
             text-transform: uppercase;
-            font-size: 10px;
+            font-size: 11px;
             letter-spacing: 0.05em;
             cursor: pointer;
             user-select: none;
+            white-space: nowrap;
         }}
         .terminal-table th:hover {{
             background-color: #1e293b;
             color: #f8fafc;
         }}
         .terminal-table td {{
-            padding: 10px 14px;
+            padding: 12px 16px;
             border-bottom: 1px solid #131c31;
             vertical-align: middle;
+            white-space: nowrap;
         }}
         .terminal-table tr:hover {{
             background-color: #111827;
@@ -320,10 +326,10 @@ else:
             font-weight: 600;
             font-family: monospace;
         }}
-        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
         
         @keyframes glowing-blink {{
             0% {{ color: #ef4444; text-shadow: 0 0 2px #ef4444; }}
@@ -335,7 +341,7 @@ else:
             font-size: 11px;
             animation: glowing-blink 1.2s infinite;
             background: rgba(56, 189, 248, 0.15);
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 4px;
             display: inline-block;
         }}
@@ -379,7 +385,7 @@ else:
             color: #94a3b8;
             text-decoration: none;
             background: #1e293b;
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 4px;
             font-size: 11px;
             margin-right: 4px;
@@ -478,7 +484,7 @@ else:
         date_sort = row["DateSort"]
         
         if is_rel:
-            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} Earnings Released!</b><br>Date: {date_disp}<br>Status: Released in last 3 days.<br>Check financial statements & filings on Screener.</span></div></td>"""
+            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} Earnings Released!</b><br>Date: {date_disp}<br>Status: Released in last 3 days.<br>Check financial statements on Screener.</span></div></td>"""
         else:
             date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="normal-date">{date_disp}</span><span class="tooltiptext"><b>{sym} Earnings Event</b><br>Scheduled Date: {date_disp}<br>Status: Upcoming / Pending filing.</span></div></td>"""
         
@@ -501,5 +507,5 @@ else:
         
     html_content += "</tbody></table></body></html>"
     
-    # Extended work area width and height
+    # Render with full 100% width and 950px height
     components.html(html_content, height=950, scrolling=True)
