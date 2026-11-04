@@ -39,8 +39,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Nifty 100 Master Watchlist with Full Company Names
-NIFTY_100_META = {
+# Default Nifty 100 Master Watchlist with Full Company Names
+DEFAULT_NIFTY_100_META = {
     "RELIANCE.NS": "Reliance Industries", "TCS.NS": "Tata Consultancy Services", "HDFCBANK.NS": "HDFC Bank", "INFY.NS": "Infosys", "ICICIBANK.NS": "ICICI Bank",
     "BHARTIARTL.NS": "Bharti Airtel", "SBIN.NS": "State Bank of India", "ITC.NS": "ITC Limited", "LTIM.NS": "LTIMindtree", "HINDUNILVR.NS": "Hindustan Unilever",
     "LT.NS": "Larsen & Toubro", "BAJFINANCE.NS": "Bajaj Finance", "MARUTI.NS": "Maruti Suzuki", "SUNPHARMA.NS": "Sun Pharma", "TATASTEEL.NS": "Tata Steel",
@@ -62,7 +62,15 @@ NIFTY_100_META = {
 }
 
 st.title("⚡ Nifty 100 Pro Market Terminal")
-st.caption("Live professional stock screener with 30D/60D sparklines, NSE corporate earnings calendar, technical recommendations, and analyst news links.")
+st.caption("Live professional stock screener with manual ticker addition, 30D/60D sparklines, earnings calendar alerts, and analyst recommendations.")
+
+# Manual Ticker Input Section
+user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (e.g., MOTHERSON, ZOMATO, TATAINVEST):", "").strip().upper()
+if user_custom_ticker:
+    if not user_custom_ticker.endswith(".NS"):
+        user_custom_ticker += ".NS"
+    if user_custom_ticker not in DEFAULT_NIFTY_100_META:
+        DEFAULT_NIFTY_100_META[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
 
 # Fetch Global & Domestic Indices
 @st.cache_data(ttl=300)
@@ -147,20 +155,17 @@ def generate_svg_sparkline(prices, label="30D"):
     return svg
 
 @st.cache_data(ttl=1800)
-def fetch_terminal_data():
-    tickers = list(NIFTY_100_META.keys())
-    df_raw = yf.download(tickers, period="70d", interval="1d", group_by="ticker", progress=False)
-    
-    today = date.today()
+def fetch_terminal_data(tickers_dict_items):
     rows = []
-    for ticker, comp_name in NIFTY_100_META.items():
+    today = date.today()
+    for ticker, comp_name in tickers_dict_items:
         try:
             t_obj = yf.Ticker(ticker)
-            data = df_raw[ticker].dropna()
-            if len(data) < 60:
+            hist = t_obj.history(period="70d")
+            if hist.empty or len(hist) < 60:
                 continue
             
-            closes = data['Close'].values
+            closes = hist['Close'].values
             curr_price = float(closes[-1])
             prev_price = float(closes[-2])
             change_pct = ((curr_price - prev_price) / prev_price) * 100
@@ -168,7 +173,6 @@ def fetch_terminal_data():
             p30 = closes[-30:]
             p60 = closes[-60:]
             
-            # Format Date like "5 Nov"
             date_display = "TBD"
             raw_date_sort = "9999-12-31"
             is_released = False
@@ -178,21 +182,23 @@ def fetch_terminal_data():
                     ed_list = calendar["Earnings Date"]
                     if len(ed_list) > 0:
                         ed = pd.to_datetime(ed_list[0]).date()
-                        date_display = ed.strftime("%d %b")  # e.g., "5 Nov"
+                        date_display = ed.strftime("%d %b")
                         raw_date_sort = ed.strftime("%Y-%m-%d")
-                        if (today - ed).days >= 0 and (today - ed).days <= 3:
+                        # Check if released in last 3 days or today
+                        days_diff = (today - ed).days
+                        if days_diff >= 0 and days_diff <= 3:
                             is_released = True
             except Exception:
                 pass
             
-            delta = data['Close'].diff()
+            delta = hist['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
             rs = gain / loss
             rsi_series = 100 - (100 / (1 + rs))
             rsi = float(rsi_series.iloc[-1]) if not rsi_series.isna().iloc[-1] else 50.0
             
-            sma50 = float(data['Close'].rolling(50).mean().iloc[-1])
+            sma50 = float(hist['Close'].rolling(50).mean().iloc[-1])
             p30_ret = ((curr_price - p30[0]) / p30[0]) * 100
             
             if rsi < 35 and curr_price > sma50:
@@ -224,7 +230,7 @@ def fetch_terminal_data():
     return pd.DataFrame(rows)
 
 with st.spinner("Fetching live prices, corporate calendar & technical signals..."):
-    df = fetch_terminal_data()
+    df = fetch_terminal_data(tuple(DEFAULT_NIFTY_100_META.items()))
 
 if df.empty:
     st.warning("Could not fetch market data. Please click Refresh.")
@@ -320,7 +326,7 @@ else:
         }}
         .blinking-result {{
             font-weight: 800;
-            font-size: 12px;
+            font-size: 11px;
             animation: glowing-blink 1.2s infinite;
             background: rgba(56, 189, 248, 0.15);
             padding: 4px 8px;
@@ -342,17 +348,17 @@ else:
         }}
         .tooltip .tooltiptext {{
             visibility: hidden;
-            width: 210px;
+            width: 220px;
             background-color: #1e293b;
             color: #f8fafc;
             text-align: left;
             border-radius: 6px;
             padding: 8px;
             position: absolute;
-            z-index: 1;
+            z-index: 10;
             bottom: 125%;
             left: 50%;
-            margin-left: -105px;
+            margin-left: -110px;
             opacity: 0;
             transition: opacity 0.3s;
             font-size: 11px;
@@ -467,7 +473,7 @@ else:
         date_sort = row["DateSort"]
         
         if is_rel:
-            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 LIVE OUT ({date_disp})</span><span class="tooltiptext"><b>{sym} Earnings Released!</b><br>Date: {date_disp}<br>Check quarterly financial results on Screener.</span></div></td>"""
+            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} Earnings Released!</b><br>Date: {date_disp}<br>Status: Released in last 3 days.<br>Check financial statements on Screener.</span></div></td>"""
         else:
             date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="normal-date">{date_disp}</span><span class="tooltiptext"><b>{sym} Earnings Event</b><br>Scheduled Date: {date_disp}<br>Status: Upcoming / Pending</span></div></td>"""
         
@@ -490,4 +496,5 @@ else:
         
     html_content += "</tbody></table></body></html>"
     
-    components.html(html_content, height=850, scrolling=True)
+    # Extended work area height for more parameters/rows
+    components.html(html_content, height=950, scrolling=True)
