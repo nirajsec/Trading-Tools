@@ -39,30 +39,30 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Nifty 100 Master Watchlist
-NIFTY_100_TICKERS = [
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-    "BHARTIARTL.NS", "SBIN.NS", "ITC.NS", "LTIM.NS", "HINDUNILVR.NS",
-    "LT.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS", "TATASTEEL.NS",
-    "M&M.NS", "KOTAKBANK.NS", "TITAN.NS", "NTPC.NS", "AXISBANK.NS",
-    "ADANIENT.NS", "ADANIPORTS.NS", "ULTRACEMCO.NS", "POWERGRID.NS", "TATAMOTORS.NS",
-    "BAJAJFINSV.NS", "COALINDIA.NS", "ASIANPAINT.NS", "ONGC.NS", "HCLTECH.NS",
-    "GRASIM.NS", "BAJAJ-AUTO.NS", "TECHM.NS", "WIPRO.NS", "BRITANNIA.NS",
-    "CIPLA.NS", "DRREDDY.NS", "EICHERMOT.NS", "BPCL.NS", "HEROMOTOCO.NS",
-    "DIVISLAB.NS", "TATACONSUM.NS", "APOLLOHOSP.NS", "HINDALCO.NS", "INDUSINDBK.NS",
-    "JSWSTEEL.NS", "SBILIFE.NS", "HDFCLIFE.NS", "BEL.NS", "TRENT.NS",
-    "ABB.NS", "ADANIGREEN.NS", "ADANIPOWER.NS", "AMBUJACEM.NS", "ATGL.NS",
-    "BANKBARODA.NS", "BHEL.NS", "CANBK.NS", "CHOLAFIN.NS", "DABUR.NS",
-    "DLF.NS", "GAIL.NS", "GODREJCP.NS", "HAVELLS.NS", "ICICIGI.NS",
-    "ICICIPRULI.NS", "IOC.NS", "IRCTC.NS", "JINDALSTEL.NS", "LICI.NS",
-    "MARICO.NS", "MOTHERSON.NS", "NAUKRI.NS", "NESTLEIND.NS", "PFC.NS",
-    "PIDILITIND.NS", "PNB.NS", "RECLTD.NS", "SBICARD.NS", "SHREECEM.NS",
-    "SIEMENS.NS", "SRF.NS", "TATAPOWER.NS", "TVSMOTOR.NS", "UPL.NS",
-    "VEDL.NS", "ZOMATO.NS", "ZYDUSLIFE.NS"
-]
+# Nifty 100 Master Watchlist with Full Company Names
+NIFTY_100_META = {
+    "RELIANCE.NS": "Reliance Industries", "TCS.NS": "Tata Consultancy Services", "HDFCBANK.NS": "HDFC Bank", "INFY.NS": "Infosys", "ICICIBANK.NS": "ICICI Bank",
+    "BHARTIARTL.NS": "Bharti Airtel", "SBIN.NS": "State Bank of India", "ITC.NS": "ITC Limited", "LTIM.NS": "LTIMindtree", "HINDUNILVR.NS": "Hindustan Unilever",
+    "LT.NS": "Larsen & Toubro", "BAJFINANCE.NS": "Bajaj Finance", "MARUTI.NS": "Maruti Suzuki", "SUNPHARMA.NS": "Sun Pharma", "TATASTEEL.NS": "Tata Steel",
+    "M&M.NS": "Mahindra & Mahindra", "KOTAKBANK.NS": "Kotak Mahindra Bank", "TITAN.NS": "Titan Company", "NTPC.NS": "NTPC", "AXISBANK.NS": "Axis Bank",
+    "ADANIENT.NS": "Adani Enterprises", "ADANIPORTS.NS": "Adani Ports", "ULTRACEMCO.NS": "UltraTech Cement", "POWERGRID.NS": "Power Grid Corp", "TATAMOTORS.NS": "Tata Motors",
+    "BAJAJFINSV.NS": "Bajaj Finserv", "COALINDIA.NS": "Coal India", "ASIANPAINT.NS": "Asian Paints", "ONGC.NS": "ONGC", "HCLTECH.NS": "HCL Technologies",
+    "GRASIM.NS": "Grasim Industries", "BAJAJ-AUTO.NS": "Bajaj Auto", "TECHM.NS": "Tech Mahindra", "WIPRO.NS": "Wipro", "BRITANNIA.NS": "Britannia Industries",
+    "CIPLA.NS": "Cipla", "DRREDDY.NS": "Dr. Reddy's Labs", "EICHERMOT.NS": "Eicher Motors", "BPCL.NS": "BPCL", "HEROMOTOCO.NS": "Hero MotoCorp",
+    "DIVISLAB.NS": "Divi's Lab", "TATACONSUM.NS": "Tata Consumer", "APOLLOHOSP.NS": "Apollo Hospitals", "HINDALCO.NS": "Hindalco Industries", "INDUSINDBK.NS": "IndusInd Bank",
+    "JSWSTEEL.NS": "JSW Steel", "SBILIFE.NS": "SBI Life Insurance", "HDFCLIFE.NS": "HDFC Life", "BEL.NS": "Bharat Electronics", "TRENT.NS": "Trent",
+    "ABB.NS": "ABB India", "ADANIGREEN.NS": "Adani Green", "ADANIPOWER.NS": "Adani Power", "AMBUJACEM.NS": "Ambuja Cements", "ATGL.NS": "Adani Total Gas",
+    "BANKBARODA.NS": "Bank of Baroda", "BHEL.NS": "BHEL", "CANBK.NS": "Canara Bank", "CHOLAFIN.NS": "Cholamandalam Inv", "DABUR.NS": "Dabur India",
+    "DLF.NS": "DLF", "GAIL.NS": "GAIL India", "GODREJCP.NS": "Godrej Consumer", "HAVELLS.NS": "Havells India", "ICICIGI.NS": "ICICI Lombard",
+    "ICICIPRULI.NS": "ICICI Prudential", "IOC.NS": "IOCL", "IRCTC.NS": "IRCTC", "JINDALSTEL.NS": "Jindal Steel", "LICI.NS": "LIC",
+    "MARICO.NS": "Marico", "MOTHERSON.NS": "Motherson Sumi", "NAUKRI.NS": "Info Edge", "NESTLEIND.NS": "Nestle India", "PFC.NS": "Power Finance Corp",
+    "PIDILITIND.NS": "Pidilite Industries", "PNB.NS": "Punjab National Bank", "RECLTD.NS": "REC Limited", "SBICARD.NS": "SBI Cards", "SHREECEM.NS": "Shree Cement",
+    "SIEMENS.NS": "Siemens", "SRF.NS": "SRF Limited", "TATAPOWER.NS": "Tata Power", "TVSMOTOR.NS": "TVS Motor", "UPL.NS": "UPL",
+    "VEDL.NS": "Vedanta", "ZOMATO.NS": "Zomato", "ZYDUSLIFE.NS": "Zydus Lifesciences"
+}
 
 st.title("⚡ Nifty 100 Pro Market Terminal")
-st.caption("Live professional stock screener with 30D/60D sparklines, earnings calendar alerts, technical recommendations, and analyst news links.")
+st.caption("Live professional stock screener with 30D/60D sparklines, NSE corporate earnings calendar, technical recommendations, and analyst news links.")
 
 # Fetch Global & Domestic Indices
 @st.cache_data(ttl=300)
@@ -148,11 +148,12 @@ def generate_svg_sparkline(prices, label="30D"):
 
 @st.cache_data(ttl=1800)
 def fetch_terminal_data():
-    df_raw = yf.download(NIFTY_100_TICKERS, period="70d", interval="1d", group_by="ticker", progress=False)
+    tickers = list(NIFTY_100_META.keys())
+    df_raw = yf.download(tickers, period="70d", interval="1d", group_by="ticker", progress=False)
     
     today = date.today()
     rows = []
-    for ticker in NIFTY_100_TICKERS:
+    for ticker, comp_name in NIFTY_100_META.items():
         try:
             t_obj = yf.Ticker(ticker)
             data = df_raw[ticker].dropna()
@@ -167,8 +168,9 @@ def fetch_terminal_data():
             p30 = closes[-30:]
             p60 = closes[-60:]
             
-            # Earnings Date Check
-            earnings_date_str = "Not Available"
+            # Format Date like "5 Nov"
+            date_display = "TBD"
+            raw_date_sort = "9999-12-31"
             is_released = False
             try:
                 calendar = t_obj.calendar
@@ -176,8 +178,8 @@ def fetch_terminal_data():
                     ed_list = calendar["Earnings Date"]
                     if len(ed_list) > 0:
                         ed = pd.to_datetime(ed_list[0]).date()
-                        earnings_date_str = ed.strftime("%d %b %Y")
-                        # If earnings date is today or in the past 2 days, mark as released/live alert
+                        date_display = ed.strftime("%d %b")  # e.g., "5 Nov"
+                        raw_date_sort = ed.strftime("%Y-%m-%d")
                         if (today - ed).days >= 0 and (today - ed).days <= 3:
                             is_released = True
             except Exception:
@@ -206,12 +208,14 @@ def fetch_terminal_data():
             
             rows.append({
                 "Symbol": clean_sym,
+                "Company": comp_name,
                 "Price": curr_price,
                 "Change": change_pct,
                 "30D": [float(x) for x in p30],
                 "60D": [float(x) for x in p60],
                 "Signal": signal,
-                "EarningsDate": earnings_date_str,
+                "DateDisplay": date_display,
+                "DateSort": raw_date_sort,
                 "IsReleased": is_released
             })
         except Exception:
@@ -219,7 +223,7 @@ def fetch_terminal_data():
             
     return pd.DataFrame(rows)
 
-with st.spinner("Fetching live prices, earnings calendar & computing technical signals..."):
+with st.spinner("Fetching live prices, corporate calendar & technical signals..."):
     df = fetch_terminal_data()
 
 if df.empty:
@@ -282,6 +286,11 @@ else:
             font-family: monospace;
             font-size: 14px;
         }}
+        .company-name {{
+            color: #f8fafc;
+            font-weight: 500;
+            font-size: 13px;
+        }}
         .price-val {{
             font-family: monospace;
             font-weight: 600;
@@ -318,10 +327,11 @@ else:
             border-radius: 4px;
             display: inline-block;
         }}
-        .normal-result {{
-            color: #94a3b8;
+        .normal-date {{
+            color: #f1f5f9;
+            font-weight: 600;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 13px;
         }}
         
         /* Tooltip styling */
@@ -382,13 +392,13 @@ else:
                     shouldSwitch = false;
                     x = rows[i].getElementsByTagName("TD")[n];
                     y = rows[i + 1].getElementsByTagName("TD")[n];
-                    var xVal = x.textContent || x.innerText;
-                    var yVal = y.textContent || y.innerText;
+                    var xVal = x.getAttribute("data-sort") || x.textContent || x.innerText;
+                    var yVal = y.getAttribute("data-sort") || y.textContent || y.innerText;
                     
                     var xNum = parseFloat(xVal.replace(/[^0-9.-]+/g,""));
                     var yNum = parseFloat(yVal.replace(/[^0-9.-]+/g,""));
                     
-                    if (!isNaN(xNum) && !isNaN(yNum)) {{
+                    if (!isNaN(xNum) && !isNaN(yNum) && xVal.trim() !== "" && yVal.trim() !== "") {{
                         if (dir == "asc") {{
                             if (xNum > yNum) {{ shouldSwitch = true; break; }}
                         }} else if (dir == "desc") {{
@@ -420,14 +430,15 @@ else:
     <table id="stockTable" class="terminal-table">
         <thead>
             <tr>
-                <th onclick="sortTable(0)">Ticker ↕</th>
-                <th onclick="sortTable(1)">Current Price ↕</th>
-                <th onclick="sortTable(2)">24H Change ↕</th>
+                <th onclick="sortTable(0)">Date ↕</th>
+                <th onclick="sortTable(1)">Ticker ↕</th>
+                <th onclick="sortTable(2)">Company ↕</th>
+                <th onclick="sortTable(3)">Current Price ↕</th>
+                <th onclick="sortTable(4)">24H Change ↕</th>
                 <th>30-Day Trend (₹)</th>
                 <th>60-Day Trend (₹)</th>
-                <th onclick="sortTable(5)">Recommendation ↕</th>
-                <th onclick="sortTable(6)">Earnings Date / Status ↕</th>
-                <th>Analyst & ZeeBiz News</th>
+                <th onclick="sortTable(7)">Recommendation ↕</th>
+                <th>Results & News</th>
             </tr>
         </thead>
         <tbody>
@@ -447,33 +458,32 @@ else:
         elif sig == "SELL": badge_class = "badge-sell"
         
         sym = row["Symbol"]
+        comp = row["Company"]
         screener_url = f"https://www.screener.in/company/{sym}/consolidated/"
         zeebiz_url = f"https://www.zeebiz.com/search?q={sym}"
         
         is_rel = row["IsReleased"]
-        ed_val = row["EarningsDate"]
+        date_disp = row["DateDisplay"]
+        date_sort = row["DateSort"]
         
         if is_rel:
-            earnings_display = f"""<div class="tooltip"><span class="blinking-result">🚨 LIVE RESULT OUT!</span><span class="tooltiptext"><b>{sym} Earnings Released!</b><br>Date: {ed_val}<br>Check quarterly financial results on Screener & Moneycontrol.</span></div>"""
+            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 LIVE OUT ({date_disp})</span><span class="tooltiptext"><b>{sym} Earnings Released!</b><br>Date: {date_disp}<br>Check quarterly financial results on Screener.</span></div></td>"""
         else:
-            earnings_display = f"""<div class="tooltip"><span class="normal-result">{ed_val}</span><span class="tooltiptext"><b>{sym} Earnings Calendar</b><br>Scheduled Date: {ed_val}<br>Status: Upcoming / Pending</span></div>"""
+            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="normal-date">{date_disp}</span><span class="tooltiptext"><b>{sym} Earnings Event</b><br>Scheduled Date: {date_disp}<br>Status: Upcoming / Pending</span></div></td>"""
         
         html_content += f"""
             <tr>
+                {date_cell_html}
                 <td><span class="ticker-symbol">{sym}</span></td>
+                <td><span class="company-name">{comp}</span></td>
                 <td><span class="price-val">₹{row['Price']:,.2f}</span></td>
                 <td><span class="{change_class}">{sign_str}{row['Change']:.2f}%</span></td>
                 <td>{svg_30}</td>
                 <td>{svg_60}</td>
                 <td><span class="{badge_class}">{sig}</span></td>
                 <td>
-                    {earnings_display}
-                    <div style="margin-top: 4px;">
-                        <a href="{screener_url}" target="_blank" class="ext-link">Results</a>
-                    </div>
-                </td>
-                <td>
-                    <a href="{zeebiz_url}" target="_blank" class="ext-link">ZeeBiz News</a>
+                    <a href="{screener_url}" target="_blank" class="ext-link">Results</a>
+                    <a href="{zeebiz_url}" target="_blank" class="ext-link">ZeeBiz</a>
                 </td>
             </tr>
         """
