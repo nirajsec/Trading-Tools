@@ -1,511 +1,222 @@
-import streamlit as st
-import yfinance as yf
+import time
 import pandas as pd
-import streamlit.components.v1 as components
-from datetime import datetime, date, timedelta
+import requests
+import streamlit as st
+from streamlit_autorefresh import st_autorefresh
+import yfinance as yf
 
-# Page Configuration - Wide Mode enabled for maximum width
+# -----------------------------------------------------------------------------
+# 1. PAGE CONFIGURATION
+# -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Nifty 100 Pro Terminal",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    page_title="Indian Stock & IPO Tracker",
+    page_icon="📈",
+    layout="wide"
 )
 
-# Custom Styling for Market Indices Bar & Full-Width App UI
+# -----------------------------------------------------------------------------
+# 2. AUTO-REFRESH CONFIGURATION (Every 2 Seconds)
+# -----------------------------------------------------------------------------
+# Auto-refresh interval set to 2000 ms (2 seconds)
+refresh_count = st_autorefresh(interval=2000, limit=2000, key="live_feed_refresh")
+
+# Custom CSS for UI layout and custom HTML Tooltips
 st.markdown("""
-<style>
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        max-width: 100% !important;
-    }
-    .index-card {
-        background-color: #131c31;
-        border: 1px solid #1e293b;
-        padding: 10px 14px;
+    <style>
+    .metric-card {
+        background-color: #0e1117;
+        border: 1px solid #262730;
         border-radius: 8px;
-        text-align: center;
-        font-family: monospace;
+        padding: 12px;
+        margin-bottom: 10px;
     }
-    .index-name {
-        color: #94a3b8;
-        font-size: 11px;
+    .custom-tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+        color: #58a6ff;
         font-weight: 600;
-        text-transform: uppercase;
+        text-decoration: underline;
+        text-decoration-style: dotted;
     }
-    .index-val {
-        color: #f1f5f9;
-        font-size: 15px;
-        font-weight: 700;
-        margin-top: 2px;
+    .custom-tooltip .tooltip-content {
+        visibility: hidden;
+        width: 280px;
+        background-color: #161b22;
+        color: #c9d1d9;
+        text-align: left;
+        border-radius: 8px;
+        padding: 10px;
+        position: absolute;
+        z-index: 100;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -140px;
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+        box-shadow: 0px 8px 16px rgba(0,0,0,0.5);
+        border: 1px solid #30363d;
+        font-size: 13px;
+        font-weight: normal;
     }
-    .pos { color: #22c55e; font-size: 12px; font-weight: 600; }
-    .neg { color: #ef4444; font-size: 12px; font-weight: 600; }
-</style>
+    .custom-tooltip:hover .tooltip-content {
+        visibility: visible;
+        opacity: 1;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
-# Default Nifty 100 Master Watchlist with Full Company Names
-DEFAULT_NIFTY_100_META = {
-    "RELIANCE.NS": "Reliance Industries", "TCS.NS": "Tata Consultancy Services", "HDFCBANK.NS": "HDFC Bank", "INFY.NS": "Infosys", "ICICIBANK.NS": "ICICI Bank",
-    "BHARTIARTL.NS": "Bharti Airtel", "SBIN.NS": "State Bank of India", "ITC.NS": "ITC Limited", "LTIM.NS": "LTIMindtree", "HINDUNILVR.NS": "Hindustan Unilever",
-    "LT.NS": "Larsen & Toubro", "BAJFINANCE.NS": "Bajaj Finance", "MARUTI.NS": "Maruti Suzuki", "SUNPHARMA.NS": "Sun Pharma", "TATASTEEL.NS": "Tata Steel",
-    "M&M.NS": "Mahindra & Mahindra", "KOTAKBANK.NS": "Kotak Mahindra Bank", "TITAN.NS": "Titan Company", "NTPC.NS": "NTPC", "AXISBANK.NS": "Axis Bank",
-    "ADANIENT.NS": "Adani Enterprises", "ADANIPORTS.NS": "Adani Ports", "ULTRACEMCO.NS": "UltraTech Cement", "POWERGRID.NS": "Power Grid Corp", "TATAMOTORS.NS": "Tata Motors",
-    "BAJAJFINSV.NS": "Bajaj Finserv", "COALINDIA.NS": "Coal India", "ASIANPAINT.NS": "Asian Paints", "ONGC.NS": "ONGC", "HCLTECH.NS": "HCL Technologies",
-    "GRASIM.NS": "Grasim Industries", "BAJAJ-AUTO.NS": "Bajaj Auto", "TECHM.NS": "Tech Mahindra", "WIPRO.NS": "Wipro", "BRITANNIA.NS": "Britannia Industries",
-    "CIPLA.NS": "Cipla", "DRREDDY.NS": "Dr. Reddy's Labs", "EICHERMOT.NS": "Eicher Motors", "BPCL.NS": "BPCL", "HEROMOTOCO.NS": "Hero MotoCorp",
-    "DIVISLAB.NS": "Divi's Lab", "TATACONSUM.NS": "Tata Consumer", "APOLLOHOSP.NS": "Apollo Hospitals", "HINDALCO.NS": "Hindalco Industries", "INDUSINDBK.NS": "IndusInd Bank",
-    "JSWSTEEL.NS": "JSW Steel", "SBILIFE.NS": "SBI Life Insurance", "HDFCLIFE.NS": "HDFC Life", "BEL.NS": "Bharat Electronics", "TRENT.NS": "Trent",
-    "ABB.NS": "ABB India", "ADANIGREEN.NS": "Adani Green", "ADANIPOWER.NS": "Adani Power", "AMBUJACEM.NS": "Ambuja Cements", "ATGL.NS": "Adani Total Gas",
-    "BANKBARODA.NS": "Bank of Baroda", "BHEL.NS": "BHEL", "CANBK.NS": "Canara Bank", "CHOLAFIN.NS": "Cholamandalam Inv", "DABUR.NS": "Dabur India",
-    "DLF.NS": "DLF", "GAIL.NS": "GAIL India", "GODREJCP.NS": "Godrej Consumer", "HAVELLS.NS": "Havells India", "ICICIGI.NS": "ICICI Lombard",
-    "ICICIPRULI.NS": "ICICI Prudential", "IOC.NS": "IOCL", "IRCTC.NS": "IRCTC", "JINDALSTEL.NS": "Jindal Steel", "LICI.NS": "LIC",
-    "MARICO.NS": "Marico", "MOTHERSON.NS": "Motherson Sumi", "NAUKRI.NS": "Info Edge", "NESTLEIND.NS": "Nestle India", "PFC.NS": "Power Finance Corp",
-    "PIDILITIND.NS": "Pidilite Industries", "PNB.NS": "Punjab National Bank", "RECLTD.NS": "REC Limited", "SBICARD.NS": "SBI Cards", "SHREECEM.NS": "Shree Cement",
-    "SIEMENS.NS": "Siemens", "SRF.NS": "SRF Limited", "TATAPOWER.NS": "Tata Power", "TVSMOTOR.NS": "TVS Motor", "UPL.NS": "UPL",
-    "VEDL.NS": "Vedanta", "ZOMATO.NS": "Zomato", "ZYDUSLIFE.NS": "Zydus Lifesciences"
-}
-
-st.title("⚡ Nifty 100 Pro Market Terminal")
-st.caption("Full-width professional stock screener with manual ticker addition, 30D/60D sparklines, active earnings calendar & alerts, and analyst recommendations.")
-
-# Manual Ticker Input Section
-user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (e.g., MOTHERSON, ZOMATO, TATAINVEST):", "").strip().upper()
-if user_custom_ticker:
-    if not user_custom_ticker.endswith(".NS"):
-        user_custom_ticker += ".NS"
-    if user_custom_ticker not in DEFAULT_NIFTY_100_META:
-        DEFAULT_NIFTY_100_META[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
-
-# Fetch Global & Domestic Indices
-@st.cache_data(ttl=300)
-def fetch_indices():
-    index_tickers = {
-        "Nifty 50": "^NSEI",
-        "Bank Nifty": "^NSEBANK",
-        "India VIX": "^INDIAVIX",
-        "Nasdaq": "^IXIC",
-        "Dow Jones": "^DJI"
-    }
-    data = {}
-    for name, ticker in index_tickers.items():
-        try:
-            hist = yf.Ticker(ticker).history(period="2d")
-            if len(hist) >= 2:
-                curr = float(hist['Close'].iloc[-1])
-                prev = float(hist['Close'].iloc[-2])
-                chg = ((curr - prev) / prev) * 100
-                data[name] = {"val": curr, "chg": chg}
-        except Exception:
-            continue
-    return data
-
-indices_data = fetch_indices()
-if indices_data:
-    cols = st.columns(5)
-    for i, (name, info) in enumerate(indices_data.items()):
-        with cols[i]:
-            chg_class = "pos" if info["chg"] >= 0 else "neg"
-            sign = "+" if info["chg"] >= 0 else ""
-            st.markdown(f"""
-                <div class="index-card">
-                    <div class="index-name">{name}</div>
-                    <div class="index-val">{info['val']:,.2f}</div>
-                    <div class="{chg_class}">{sign}{info['chg']:.2f}%</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-st.divider()
-
-col_btn1, col_btn2 = st.columns([1, 5])
-with col_btn1:
-    if st.button("🔄 Refresh Data"):
-        st.cache_data.clear()
-        st.rerun()
-
-def generate_svg_sparkline(prices, label="30D"):
-    if not prices or len(prices) < 2:
-        return ""
-    min_p, max_p = min(prices), max(prices)
-    p_range = max_p - min_p if max_p != min_p else 1.0
-
-    width, height = 135, 38
-    points = []
-    for i, p in enumerate(prices):
-        x = (i / (len(prices) - 1)) * width
-        y = height - 4 - ((p - min_p) / p_range) * (height - 8)
-        points.append(f"{x:.1f},{y:.1f}")
-
-    pts_str = " ".join(points)
-    is_bullish = prices[-1] >= prices[0]
-    color = "#22c55e" if is_bullish else "#ef4444"
-    
-    area_pts = f"0,{height} " + pts_str + f" {width},{height}"
-
-    svg = f"""
-    <svg width="{width}" height="{height}" style="background:transparent; overflow:visible;">
-        <defs>
-            <linearGradient id="grad_{label}_{abs(hash(tuple(prices)))}" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="{color}" stop-opacity="0.25"/>
-                <stop offset="100%" stop-color="{color}" stop-opacity="0.0"/>
-            </linearGradient>
-        </defs>
-        <polygon points="{area_pts}" fill="url(#grad_{label}_{abs(hash(tuple(prices)))})" />
-        <polyline fill="none" stroke="{color}" stroke-width="1.8" points="{pts_str}" />
-        <circle cx="{width}" cy="{points[-1].split(',')[1]}" r="2.5" fill="{color}" />
-        <text x="2" y="8" fill="#64748b" font-size="7.5" font-family="monospace">₹{min_p:.0f}</text>
-        <text x="{width-32}" y="8" fill="#64748b" font-size="7.5" font-family="monospace">₹{max_p:.0f}</text>
-    </svg>
+# -----------------------------------------------------------------------------
+# 3. MASTER TICKER LOADER & DATA FETCHING
+# -----------------------------------------------------------------------------
+@st.cache_data(ttl=3600)
+def load_complete_ticker_master():
     """
-    return svg
+    Downloads and caches the official full equity list from NSE.
+    Appends '.NS' for yahoo finance compatibility.
+    """
+    try:
+        url = "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        df = pd.read_csv(url)
+        tickers = [f"{symbol}.NS" for symbol in df['SYMBOL'].tolist()]
+        return tickers
+    except Exception:
+        # Fallback list if external fetch fails
+        return ["BSE.NS", "RELIANCE.NS", "TCS.NS", "INFY.NS", "TATAMOTORS.NS", "ZOMATO.NS", "JIOFIN.NS"]
 
-@st.cache_data(ttl=1800)
-def fetch_terminal_data(tickers_dict_items):
-    rows = []
-    today = date.today()
+def fetch_live_stock_metrics(ticker_symbols):
+    """
+    Fetches real-time price, calculates total trades in Lakhs,
+    and maps quarterly result summaries.
+    """
+    # Sample mock storage/database for earnings summaries
+    results_database = {
+        "BSE.NS": {
+            "status": "Q2 Out",
+            "summary": "Net Profit: ₹807.52 Cr (+45% YoY)<br>Revenue: ₹1,432.66 Cr (+34% YoY)<br>EBITDA Margin: 68.7%"
+        },
+        "RELIANCE.NS": {
+            "status": "Q2 Out",
+            "summary": "Net Profit: ₹16,563 Cr (+11% YoY)<br>Retail Revenue: Up 18%<br>Jio ARPU: ₹195.1"
+        },
+        "TCS.NS": {
+            "status": "Q2 Out",
+            "summary": "Net Profit: ₹11,909 Cr (+5% YoY)<br>Attritions: Down to 12.3%<br>Dividend: ₹10/share"
+        }
+    }
+
+    results = []
     
-    for idx, (ticker, comp_name) in enumerate(tickers_dict_items):
+    for symbol in ticker_symbols:
         try:
-            t_obj = yf.Ticker(ticker)
-            hist = t_obj.history(period="70d")
-            if hist.empty or len(hist) < 60:
-                continue
+            ticker = yf.Ticker(symbol)
+            fast_info = ticker.fast_info
             
-            closes = hist['Close'].values
-            curr_price = float(closes[-1])
-            prev_price = float(closes[-2])
-            change_pct = ((curr_price - prev_price) / prev_price) * 100
+            clean_symbol = symbol.replace(".NS", "")
+            last_price = fast_info.get("last_price", 0.0)
+            prev_close = fast_info.get("previous_close", last_price)
+            volume = fast_info.get("last_volume", 0)
             
-            p30 = closes[-30:]
-            p60 = closes[-60:]
+            # Convert raw volume to Lakhs (1 Lakh = 100,000)
+            trades_in_lakhs = round(volume / 100000, 2)
             
-            ed = None
-            try:
-                calendar = t_obj.calendar
-                if calendar is not None and "Earnings Date" in calendar:
-                    ed_list = calendar["Earnings Date"]
-                    if len(ed_list) > 0:
-                        ed = pd.to_datetime(ed_list[0]).date()
-            except Exception:
-                pass
-            
-            if ed is None:
-                offset_days = (idx % 12) - 4
-                ed = today + timedelta(days=offset_days)
-            
-            date_display = ed.strftime("%d %b")
-            raw_date_sort = ed.strftime("%Y-%m-%d")
-            
-            days_diff = (today - ed).days
-            is_released = (days_diff >= 0 and days_diff <= 3)
-            
-            delta = hist['Close'].diff()
-            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-            rs = gain / loss
-            rsi_series = 100 - (100 / (1 + rs))
-            rsi = float(rsi_series.iloc[-1]) if not rsi_series.isna().iloc[-1] else 50.0
-            
-            sma50 = float(hist['Close'].rolling(50).mean().iloc[-1])
-            p30_ret = ((curr_price - p30[0]) / p30[0]) * 100
-            
-            if rsi < 35 and curr_price > sma50:
-                signal = "STRONG BUY"
-            elif rsi < 45 and p30_ret > 0:
-                signal = "BUY"
-            elif rsi > 70:
-                signal = "SELL"
-            else:
-                signal = "HOLD"
+            # Calculate price change percentage
+            pct_change = 0.0
+            if prev_close and prev_close > 0:
+                pct_change = round(((last_price - prev_close) / prev_close) * 100, 2)
                 
-            clean_sym = ticker.replace(".NS", "")
-            
-            rows.append({
-                "Symbol": clean_sym,
-                "Company": comp_name,
-                "Price": curr_price,
-                "Change": change_pct,
-                "30D": [float(x) for x in p30],
-                "60D": [float(x) for x in p60],
-                "Signal": signal,
-                "DateDisplay": date_display,
-                "DateSort": raw_date_sort,
-                "IsReleased": is_released
+            # Get result summary and hover details if available
+            earnings_info = results_database.get(
+                symbol, 
+                {"status": "Pending", "summary": "Quarterly results not declared yet for this period."}
+            )
+
+            results.append({
+                "Symbol": clean_symbol,
+                "Full Ticker": symbol,
+                "Price (₹)": round(last_price, 2),
+                "Change (%)": pct_change,
+                "Trades (in Lakhs)": trades_in_lakhs,
+                "Result Status": earnings_info["status"],
+                "Result Summary": earnings_info["summary"]
             })
         except Exception:
             continue
             
-    return pd.DataFrame(rows)
+    return pd.DataFrame(results)
 
-with st.spinner("Fetching live prices, corporate earnings calendar & technical signals..."):
-    df = fetch_terminal_data(tuple(DEFAULT_NIFTY_100_META.items()))
+# -----------------------------------------------------------------------------
+# 4. DASHBOARD HEADER & CONTROLS
+# -----------------------------------------------------------------------------
+st.title("📈 Real-Time Indian Market & IPO Analytics")
 
-if df.empty:
-    st.warning("Could not fetch market data. Please click Refresh.")
-else:
-    signals_list = ["ALL", "STRONG BUY", "BUY", "HOLD", "SELL"]
-    selected_sig = st.selectbox("Filter Recommendation Signal:", signals_list)
-    
-    if selected_sig != "ALL":
-        df_filtered = df[df["Signal"] == selected_sig]
-    else:
-        df_filtered = df
+col_a, col_b = st.columns([3, 1])
+with col_a:
+    st.caption(f"🔄 Auto-refreshing active: Updated **{refresh_count}** times (Every 2 Seconds)")
+with col_b:
+    st.markdown(f"**Server Time:** `{time.strftime('%H:%M:%S')}`")
 
-    st.markdown(f"Displaying **{len(df_filtered)}** stocks")
+# Sidebar for Master Ticker Search & Additions
+st.sidebar.header("Stock Coverage Settings")
+master_tickers = load_complete_ticker_master()
+st.sidebar.success(f"Loaded **{len(master_tickers)}** tickers from Master List")
 
-    html_content = f"""
-    <html>
-    <head>
-    <style>
-        body {{
-            background-color: #0b0f19;
-            color: #e2e8f0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-            padding: 0;
-            width: 100%;
-        }}
-        .terminal-table {{
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }}
-        .terminal-table th {{
-            background-color: #131c31;
-            color: #94a3b8;
-            text-align: left;
-            padding: 12px 16px;
-            font-weight: 600;
-            border-bottom: 1px solid #1e293b;
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 0.05em;
-            cursor: pointer;
-            user-select: none;
-            white-space: nowrap;
-        }}
-        .terminal-table th:hover {{
-            background-color: #1e293b;
-            color: #f8fafc;
-        }}
-        .terminal-table td {{
-            padding: 12px 16px;
-            border-bottom: 1px solid #131c31;
-            vertical-align: middle;
-            white-space: nowrap;
-        }}
-        .terminal-table tr:hover {{
-            background-color: #111827;
-        }}
-        .ticker-symbol {{
-            color: #38bdf8;
-            font-weight: 700;
-            font-family: monospace;
-            font-size: 14px;
-        }}
-        .company-name {{
-            color: #f8fafc;
-            font-weight: 500;
-            font-size: 13px;
-        }}
-        .price-val {{
-            font-family: monospace;
-            font-weight: 600;
-            color: #f1f5f9;
-            font-size: 14px;
-        }}
-        .positive {{
-            color: #22c55e;
-            font-weight: 600;
-            font-family: monospace;
-        }}
-        .negative {{
-            color: #ef4444;
-            font-weight: 600;
-            font-family: monospace;
-        }}
-        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        
-        @keyframes glowing-blink {{
-            0% {{ color: #ef4444; text-shadow: 0 0 2px #ef4444; }}
-            50% {{ color: #22c55e; text-shadow: 0 0 8px #22c55e; }}
-            100% {{ color: #38bdf8; text-shadow: 0 0 2px #38bdf8; }}
-        }}
-        .blinking-result {{
-            font-weight: 800;
-            font-size: 11px;
-            animation: glowing-blink 1.2s infinite;
-            background: rgba(56, 189, 248, 0.15);
-            padding: 5px 10px;
-            border-radius: 4px;
-            display: inline-block;
-        }}
-        .normal-date {{
-            color: #f1f5f9;
-            font-weight: 600;
-            font-family: monospace;
-            font-size: 13px;
-        }}
-        
-        .tooltip {{
-            position: relative;
-            display: inline-block;
-            cursor: pointer;
-        }}
-        .tooltip .tooltiptext {{
-            visibility: hidden;
-            width: 220px;
-            background-color: #1e293b;
-            color: #f8fafc;
-            text-align: left;
-            border-radius: 6px;
-            padding: 8px;
-            position: absolute;
-            z-index: 10;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -110px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 11px;
-            border: 1px solid #334155;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-        }}
-        .tooltip:hover .tooltiptext {{
-            visibility: visible;
-            opacity: 1;
-        }}
+# Selected stocks display (defaults to high-volume active stocks)
+default_watchlist = ["BSE.NS", "RELIANCE.NS", "TCS.NS", "INFY.NS", "TATAMOTORS.NS"]
+selected_tickers = st.sidebar.multiselect(
+    "Select or Add Stocks to Monitor:",
+    options=master_tickers,
+    default=default_watchlist
+)
 
-        .ext-link {{
-            color: #94a3b8;
-            text-decoration: none;
-            background: #1e293b;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            margin-right: 4px;
-            transition: all 0.2s;
-        }}
-        .ext-link:hover {{
-            background: #334155;
-            color: #38bdf8;
-        }}
-    </style>
-    <script>
-        function sortTable(n) {{
-            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-            table = document.getElementById("stockTable");
-            switching = true;
-            dir = "asc";
-            while (switching) {{
-                switching = false;
-                rows = table.rows;
-                for (i = 1; i < (rows.length - 1); i++) {{
-                    shouldSwitch = false;
-                    x = rows[i].getElementsByTagName("TD")[n];
-                    y = rows[i + 1].getElementsByTagName("TD")[n];
-                    var xVal = x.getAttribute("data-sort") || x.textContent || x.innerText;
-                    var yVal = y.getAttribute("data-sort") || y.textContent || y.innerText;
-                    
-                    var xNum = parseFloat(xVal.replace(/[^0-9.-]+/g,""));
-                    var yNum = parseFloat(yVal.replace(/[^0-9.-]+/g,""));
-                    
-                    if (!isNaN(xNum) && !isNaN(yNum) && xVal.trim() !== "" && yVal.trim() !== "") {{
-                        if (dir == "asc") {{
-                            if (xNum > yNum) {{ shouldSwitch = true; break; }}
-                        }} else if (dir == "desc") {{
-                            if (xNum < yNum) {{ shouldSwitch = true; break; }}
-                        }}
-                    }} else {{
-                        if (dir == "asc") {{
-                            if (xVal.toLowerCase() > yVal.toLowerCase()) {{ shouldSwitch = true; break; }}
-                        }} else if (dir == "desc") {{
-                            if (xVal.toLowerCase() < yVal.toLowerCase()) {{ shouldSwitch = true; break; }}
-                        }}
-                    }}
-                }}
-                if (shouldSwitch) {{
-                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                    switching = true;
-                    switchcount++;
-                }} else {{
-                    if (switchcount == 0 && dir == "asc") {{
-                        dir = "desc";
-                        switching = true;
-                    }}
-                }}
-            }}
-        }}
-    </script>
-    </head>
-    <body>
-    <table id="stockTable" class="terminal-table">
-        <thead>
-            <tr>
-                <th onclick="sortTable(0)">Ticker ↕</th>
-                <th onclick="sortTable(1)">Company ↕</th>
-                <th onclick="sortTable(2)">Current Price ↕</th>
-                <th onclick="sortTable(3)">24H Change ↕</th>
-                <th>30-Day Trend (₹)</th>
-                <th>60-Day Trend (₹)</th>
-                <th onclick="sortTable(6)">Recommendation ↕</th>
-                <th onclick="sortTable(7)">Earnings Date ↕</th>
-                <th>Results & News</th>
-            </tr>
-        </thead>
-        <tbody>
-    """
-    
-    for _, row in df_filtered.iterrows():
-        change_class = "positive" if row["Change"] >= 0 else "negative"
-        sign_str = "+" if row["Change"] >= 0 else ""
+# -----------------------------------------------------------------------------
+# 5. DATA PROCESSING & DISPLAY
+# -----------------------------------------------------------------------------
+if selected_tickers:
+    data_df = fetch_live_stock_metrics(selected_tickers)
+
+    st.subheader("Live Market Overview")
+
+    # Native Data Table with Tooltip Note
+    st.dataframe(
+        data_df[["Symbol", "Price (₹)", "Change (%)", "Trades (in Lakhs)", "Result Status"]],
+        use_container_width=True
+    )
+
+    st.markdown("---")
+    st.subheader("Interactive Stock Cards (Hover for Quarterly Results)")
+
+    # Render grid cards with HTML tooltips
+    cols = st.columns(3)
+    for index, row in data_df.iterrows():
+        col = cols[index % 3]
+        change_color = "#00c853" if row["Change (%)"] >= 0 else "#ff5252"
         
-        svg_30 = generate_svg_sparkline(row["30D"], label="30D")
-        svg_60 = generate_svg_sparkline(row["60D"], label="60D")
-        
-        sig = row["Signal"]
-        badge_class = "badge-hold"
-        if sig == "STRONG BUY": badge_class = "badge-strong-buy"
-        elif sig == "BUY": badge_class = "badge-buy"
-        elif sig == "SELL": badge_class = "badge-sell"
-        
-        sym = row["Symbol"]
-        comp = row["Company"]
-        screener_url = f"https://www.screener.in/company/{sym}/consolidated/"
-        zeebiz_url = f"https://www.zeebiz.com/search?q={sym}"
-        
-        is_rel = row["IsReleased"]
-        date_disp = row["DateDisplay"]
-        date_sort = row["DateSort"]
-        
-        if is_rel:
-            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} Earnings Released!</b><br>Date: {date_disp}<br>Status: Released in last 3 days.<br>Check financial statements on Screener.</span></div></td>"""
-        else:
-            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="normal-date">{date_disp}</span><span class="tooltiptext"><b>{sym} Earnings Event</b><br>Scheduled Date: {date_disp}<br>Status: Upcoming / Pending filing.</span></div></td>"""
-        
-        html_content += f"""
-            <tr>
-                <td><span class="ticker-symbol">{sym}</span></td>
-                <td><span class="company-name">{comp}</span></td>
-                <td><span class="price-val">₹{row['Price']:,.2f}</span></td>
-                <td><span class="{change_class}">{sign_str}{row['Change']:.2f}%</span></td>
-                <td>{svg_30}</td>
-                <td>{svg_60}</td>
-                <td><span class="{badge_class}">{sig}</span></td>
-                {date_cell_html}
-                <td>
-                    <a href="{screener_url}" target="_blank" class="ext-link">Results</a>
-                    <a href="{zeebiz_url}" target="_blank" class="ext-link">ZeeBiz</a>
-                </td>
-            </tr>
+        card_html = f"""
+        <div class="metric-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 18px; font-weight: bold; color: #ffffff;">{row['Symbol']}</span>
+                <span class="custom-tooltip">
+                    [{row['Result Status']}]
+                    <div class="tooltip-content">
+                        <strong>{row['Symbol']} Result Summary</strong><hr style="margin:4px 0; border-color:#30363d;">
+                        {row['Result Summary']}
+                    </div>
+                </span>
+            </div>
+            <div style="margin-top: 8px;">
+                <span style="font-size: 22px; font-weight: bold;">₹{row['Price (₹)']:,.2f}</span>
+                <span style="color: {change_color}; font-size: 14px; margin-left: 8px;">
+                    {'▲' if row['Change (%)'] >= 0 else '▼'} {row['Change (%)']}%
+                </span>
+            </div>
+            <div style="margin-top: 6px; font-size: 12px; color: #8b949e;">
+                Volume: <strong>{row['Trades (in Lakhs)']} Lakh trades</strong>
+            </div>
+        </div>
         """
-        
-    html_content += "</tbody></table></body></html>"
-    
-    # Render with full 100% width and 950px height
-    components.html(html_content, height=950, scrolling=True)
+        col.markdown(card_html, unsafe_allow_html=True)
+
+else:
+    st.warning("Please select at least one stock ticker from the sidebar to view metrics.")
