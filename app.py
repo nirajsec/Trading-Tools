@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import numpy as np
+import streamlit.components.v1 as components
 
 # Page Configuration
 st.set_page_config(
@@ -9,76 +9,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-
-# Custom Dark Theme Styling matching Financial Terminals
-st.markdown("""
-<style>
-    .stApp {
-        background-color: #0b0f19;
-        color: #e2e8f0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    .terminal-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-        font-size: 14px;
-    }
-    .terminal-table th {
-        background-color: #131c31;
-        color: #94a3b8;
-        text-align: left;
-        padding: 12px 16px;
-        font-weight: 600;
-        border-bottom: 1px solid #1e293b;
-        text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: 0.05em;
-    }
-    .terminal-table td {
-        padding: 14px 16px;
-        border-bottom: 1px solid #131c31;
-        vertical-align: middle;
-    }
-    .terminal-table tr:hover {
-        background-color: #111827;
-    }
-    .ticker-symbol {
-        color: #38bdf8;
-        font-weight: 700;
-        font-family: monospace;
-        font-size: 15px;
-    }
-    .company-name {
-        color: #f8fafc;
-        font-weight: 500;
-    }
-    .sector-tag {
-        color: #94a3b8;
-        font-size: 12px;
-        background: #1e293b;
-        padding: 4px 8px;
-        border-radius: 4px;
-        display: inline-block;
-    }
-    .price-val {
-        font-family: monospace;
-        font-weight: 600;
-        color: #f1f5f9;
-        font-size: 15px;
-    }
-    .positive {
-        color: #22c55e;
-        font-weight: 600;
-        font-family: monospace;
-    }
-    .negative {
-        color: #ef4444;
-        font-weight: 600;
-        font-family: monospace;
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # Define Watchlist grouped with Sectors
 STOCKS_METADATA = {
@@ -113,11 +43,11 @@ def generate_svg_sparkline(prices, label="30D"):
     min_p, max_p = min(prices), max(prices)
     p_range = max_p - min_p if max_p != min_p else 1.0
 
-    width, height = 150, 45
+    width, height = 140, 40
     points = []
     for i, p in enumerate(prices):
         x = (i / (len(prices) - 1)) * width
-        y = height - 5 - ((p - min_p) / p_range) * (height - 15)
+        y = height - 5 - ((p - min_p) / p_range) * (height - 12)
         points.append(f"{x:.1f},{y:.1f}")
 
     pts_str = " ".join(points)
@@ -136,9 +66,9 @@ def generate_svg_sparkline(prices, label="30D"):
         </defs>
         <polygon points="{area_pts}" fill="url(#grad_{label}_{abs(hash(tuple(prices)))})" />
         <polyline fill="none" stroke="{color}" stroke-width="2" points="{pts_str}" />
-        <circle cx="{width}" cy="{points[-1].split(',')[1]}" r="3.5" fill="{color}" />
-        <text x="2" y="10" fill="#64748b" font-size="9" font-family="monospace">₹{min_p:.0f}</text>
-        <text x="{width-38}" y="10" fill="#64748b" font-size="9" font-family="monospace">₹{max_p:.0f}</text>
+        <circle cx="{width}" cy="{points[-1].split(',')[1]}" r="3" fill="{color}" />
+        <text x="2" y="9" fill="#64748b" font-size="8" font-family="monospace">₹{min_p:.0f}</text>
+        <text x="{width-35}" y="9" fill="#64748b" font-size="8" font-family="monospace">₹{max_p:.0f}</text>
     </svg>
     """
     return svg
@@ -192,18 +122,89 @@ else:
     else:
         df_filtered = df
 
-    # Render Terminal Table via HTML
-    html_table = """
+    # Build HTML Terminal Table
+    html_content = """
+    <html>
+    <head>
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .terminal-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .terminal-table th {
+            background-color: #131c31;
+            color: #94a3b8;
+            text-align: left;
+            padding: 10px 14px;
+            font-weight: 600;
+            border-bottom: 1px solid #1e293b;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.05em;
+        }
+        .terminal-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #131c31;
+            vertical-align: middle;
+        }
+        .terminal-table tr:hover {
+            background-color: #111827;
+        }
+        .ticker-symbol {
+            color: #38bdf8;
+            font-weight: 700;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .company-name {
+            color: #f8fafc;
+            font-weight: 500;
+        }
+        .sector-tag {
+            color: #94a3b8;
+            font-size: 11px;
+            background: #1e293b;
+            padding: 3px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .price-val {
+            font-family: monospace;
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 14px;
+        }
+        .positive {
+            color: #22c55e;
+            font-weight: 600;
+            font-family: monospace;
+        }
+        .negative {
+            color: #ef4444;
+            font-weight: 600;
+            font-family: monospace;
+        }
+    </style>
+    </head>
+    <body>
     <table class="terminal-table">
         <thead>
             <tr>
                 <th>Ticker</th>
                 <th>Company Name</th>
                 <th>Sector</th>
-                <th>Current Price (₹)</th>
+                <th>Current Price</th>
                 <th>24H Change</th>
-                <th>30-Day Price Trend (₹)</th>
-                <th>60-Day Price Trend (₹)</th>
+                <th>30-Day Trend (₹)</th>
+                <th>60-Day Trend (₹)</th>
             </tr>
         </thead>
         <tbody>
@@ -216,7 +217,7 @@ else:
         svg_30 = generate_svg_sparkline(row["30D"], label="30D")
         svg_60 = generate_svg_sparkline(row["60D"], label="60D")
         
-        html_table += f"""
+        html_content += f"""
             <tr>
                 <td><span class="ticker-symbol">{row['Symbol']}</span></td>
                 <td><span class="company-name">{row['Name']}</span></td>
@@ -228,6 +229,7 @@ else:
             </tr>
         """
         
-    html_table += "</tbody></table>"
+    html_content += "</tbody></table></body></html>"
     
-    st.markdown(html_table, unsafe_allow_html=True)
+    # Render securely via component iframe
+    components.html(html_content, height=550, scrolling=True)
