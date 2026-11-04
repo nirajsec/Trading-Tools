@@ -5,13 +5,14 @@ import streamlit.components.v1 as components
 
 # Page Configuration
 st.set_page_config(
-    page_title="Nifty 50 Terminal",
+    page_title="Nifty 100 Terminal",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Complete Nifty 50 Watchlist with Sectors
-NIFTY_50_METADATA = {
+# Complete Nifty 100 Watchlist with Sectors
+NIFTY_100_METADATA = {
+    # Nifty 50 Core
     "RELIANCE.NS": {"name": "Reliance Industries Ltd.", "sector": "Energy"},
     "TCS.NS": {"name": "Tata Consultancy Services", "sector": "Information Tech"},
     "HDFCBANK.NS": {"name": "HDFC Bank Ltd.", "sector": "Banking"},
@@ -61,11 +62,51 @@ NIFTY_50_METADATA = {
     "SBILIFE.NS": {"name": "SBI Life Insurance Co Ltd.", "sector": "Financial Services"},
     "HDFCLIFE.NS": {"name": "HDFC Life Insurance Co Ltd.", "sector": "Financial Services"},
     "BEL.NS": {"name": "Bharat Electronics Ltd.", "sector": "Capital Goods"},
-    "TRENT.NS": {"name": "Trent Ltd.", "sector": "Consumer Goods"}
+    "TRENT.NS": {"name": "Trent Ltd.", "sector": "Consumer Goods"},
+    
+    # Nifty Next 50 Expansion
+    "ABB.NS": {"name": "ABB India Ltd.", "sector": "Capital Goods"},
+    "ADANIGREEN.NS": {"name": "Adani Green Energy Ltd.", "sector": "Energy"},
+    "ADANIPOWER.NS": {"name": "Adani Power Ltd.", "sector": "Energy"},
+    "AMBUJACEM.NS": {"name": "Ambuja Cements Ltd.", "sector": "Cement"},
+    "ATGL.NS": {"name": "Adani Total Gas Ltd.", "sector": "Energy"},
+    "BANKBARODA.NS": {"name": "Bank of Baroda", "sector": "Banking"},
+    "BHEL.NS": {"name": "Bharat Heavy Electricals Ltd.", "sector": "Capital Goods"},
+    "CANBK.NS": {"name": "Canara Bank", "sector": "Banking"},
+    "CHOLAFIN.NS": {"name": "Cholamandalam Investment", "sector": "Financial Services"},
+    "DABUR.NS": {"name": "Dabur India Ltd.", "sector": "Consumer Goods"},
+    "DLF.NS": {"name": "DLF Limited", "sector": "Construction"},
+    "GAIL.NS": {"name": "GAIL (India) Ltd.", "sector": "Energy"},
+    "GODREJCP.NS": {"name": "Godrej Consumer Products", "sector": "Consumer Goods"},
+    "HAVELLS.NS": {"name": "Havells India Ltd.", "sector": "Consumer Goods"},
+    "ICICIGI.NS": {"name": "ICICI Lombard General Ins.", "sector": "Financial Services"},
+    "ICICIPRULI.NS": {"name": "ICICI Prudential Life Ins.", "sector": "Financial Services"},
+    "IOC.NS": {"name": "Indian Oil Corporation Ltd.", "sector": "Energy"},
+    "IRCTC.NS": {"name": "IRCTC Ltd.", "sector": "Services"},
+    "JINDALSTEL.NS": {"name": "Jindal Steel & Power Ltd.", "sector": "Metals"},
+    "LICI.NS": {"name": "Life Insurance Corp of India", "sector": "Financial Services"},
+    "MARICO.NS": {"name": "Marico Ltd.", "sector": "Consumer Goods"},
+    "MOTHERSON.NS": {"name": "Samvardhana Motherson Intl", "sector": "Automobile"},
+    "NAUKRI.NS": {"name": "Info Edge (India) Ltd.", "sector": "Information Tech"},
+    "NESTLEIND.NS": {"name": "Nestle India Ltd.", "sector": "Consumer Goods"},
+    "PFC.NS": {"name": "Power Finance Corp Ltd.", "sector": "Financial Services"},
+    "PIDILITIND.NS": {"name": "Pidilite Industries Ltd.", "sector": "Consumer Goods"},
+    "PNB.NS": {"name": "Punjab National Bank", "sector": "Banking"},
+    "RECLTD.NS": {"name": "REC Limited", "sector": "Financial Services"},
+    "SBICARD.NS": {"name": "SBI Cards and Payment Services", "sector": "Financial Services"},
+    "SHREECEM.NS": {"name": "Shree Cement Ltd.", "sector": "Cement"},
+    "SIEMENS.NS": {"name": "Siemens Ltd.", "sector": "Capital Goods"},
+    "SRF.NS": {"name": "SRF Limited", "sector": "Chemicals"},
+    "TATAPOWER.NS": {"name": "Tata Power Co. Ltd.", "sector": "Energy"},
+    "TVSMOTOR.NS": {"name": "TVS Motor Company Ltd.", "sector": "Automobile"},
+    "UPL.NS": {"name": "UPL Limited", "sector": "Chemicals"},
+    "VEDL.NS": {"name": "Vedanta Ltd.", "sector": "Metals"},
+    "ZOMATO.NS": {"name": "Zomato Ltd.", "sector": "Services"},
+    "ZYDUSLIFE.NS": {"name": "Zydus Lifesciences Ltd.", "sector": "Pharma"}
 }
 
-st.title("⚡ Nifty 50 Master Sector Terminal")
-st.caption("Live multi-sector market overview tracking all 50 Nifty stocks with embedded 30D and 60D price trends.")
+st.title("⚡ Nifty 100 Master Sector Terminal")
+st.caption("Live multi-sector market overview tracking Nifty 100 large-cap stocks with embedded 30D and 60D price trends.")
 
 col_btn1, col_btn2 = st.columns([1, 5])
 with col_btn1:
@@ -111,12 +152,12 @@ def generate_svg_sparkline(prices, label="30D"):
     return svg
 
 @st.cache_data(ttl=1800)
-def fetch_nifty50_data():
-    tickers = list(NIFTY_50_METADATA.keys())
+def fetch_nifty100_data():
+    tickers = list(NIFTY_100_METADATA.keys())
     df_raw = yf.download(tickers, period="70d", interval="1d", group_by="ticker", progress=False)
     
     rows = []
-    for ticker, meta in NIFTY_50_METADATA.items():
+    for ticker, meta in NIFTY_100_METADATA.items():
         try:
             data = df_raw[ticker].dropna()
             if len(data) < 60:
@@ -144,13 +185,12 @@ def fetch_nifty50_data():
             
     return pd.DataFrame(rows)
 
-with st.spinner("Fetching live prices for all Nifty 50 stocks..."):
-    df = fetch_nifty50_data()
+with st.spinner("Fetching live prices for Nifty 100 stocks..."):
+    df = fetch_nifty100_data()
 
 if df.empty:
     st.warning("Could not fetch market data. Please click Refresh.")
 else:
-    # Sidebar or top filter controls
     sectors = ["All Sectors"] + sorted(df["Sector"].unique().tolist())
     selected_sector = st.selectbox("Filter by Sector:", sectors)
     
@@ -161,7 +201,6 @@ else:
 
     st.markdown(f"Showing **{len(df_filtered)}** stocks")
 
-    # Build HTML Terminal Table
     html_content = f"""
     <html>
     <head>
@@ -270,5 +309,4 @@ else:
         
     html_content += "</tbody></table></body></html>"
     
-    # Render full height scrollable component
-    components.html(html_content, height=750, scrolling=True)
+    components.html(html_content, height=800, scrolling=True)
