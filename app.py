@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Styling for Market Indices Bar
+# Custom Styling for Market Indices Bar & Terminal
 st.markdown("""
 <style>
     .index-card {
@@ -184,7 +184,6 @@ def fetch_terminal_data(tickers_dict_items):
                         ed = pd.to_datetime(ed_list[0]).date()
                         date_display = ed.strftime("%d %b")
                         raw_date_sort = ed.strftime("%Y-%m-%d")
-                        # Check if released in last 3 days or today
                         days_diff = (today - ed).days
                         if days_diff >= 0 and days_diff <= 3:
                             is_released = True
@@ -255,6 +254,7 @@ else:
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
             padding: 0;
+            width: 100%;
         }}
         .terminal-table {{
             width: 100%;
@@ -318,7 +318,6 @@ else:
         .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
         .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
         
-        /* Blinking Animation for Released Results */
         @keyframes glowing-blink {{
             0% {{ color: #ef4444; text-shadow: 0 0 2px #ef4444; }}
             50% {{ color: #22c55e; text-shadow: 0 0 8px #22c55e; }}
@@ -340,7 +339,6 @@ else:
             font-size: 13px;
         }}
         
-        /* Tooltip styling */
         .tooltip {{
             position: relative;
             display: inline-block;
@@ -436,14 +434,14 @@ else:
     <table id="stockTable" class="terminal-table">
         <thead>
             <tr>
-                <th onclick="sortTable(0)">Date ↕</th>
-                <th onclick="sortTable(1)">Ticker ↕</th>
-                <th onclick="sortTable(2)">Company ↕</th>
-                <th onclick="sortTable(3)">Current Price ↕</th>
-                <th onclick="sortTable(4)">24H Change ↕</th>
+                <th onclick="sortTable(0)">Ticker ↕</th>
+                <th onclick="sortTable(1)">Company ↕</th>
+                <th onclick="sortTable(2)">Current Price ↕</th>
+                <th onclick="sortTable(3)">24H Change ↕</th>
                 <th>30-Day Trend (₹)</th>
                 <th>60-Day Trend (₹)</th>
-                <th onclick="sortTable(7)">Recommendation ↕</th>
+                <th onclick="sortTable(6)">Recommendation ↕</th>
+                <th onclick="sortTable(7)">Earnings Date ↕</th>
                 <th>Results & News</th>
             </tr>
         </thead>
@@ -479,7 +477,6 @@ else:
         
         html_content += f"""
             <tr>
-                {date_cell_html}
                 <td><span class="ticker-symbol">{sym}</span></td>
                 <td><span class="company-name">{comp}</span></td>
                 <td><span class="price-val">₹{row['Price']:,.2f}</span></td>
@@ -487,6 +484,7 @@ else:
                 <td>{svg_30}</td>
                 <td>{svg_60}</td>
                 <td><span class="{badge_class}">{sig}</span></td>
+                {date_cell_html}
                 <td>
                     <a href="{screener_url}" target="_blank" class="ext-link">Results</a>
                     <a href="{zeebiz_url}" target="_blank" class="ext-link">ZeeBiz</a>
@@ -496,5 +494,5 @@ else:
         
     html_content += "</tbody></table></body></html>"
     
-    # Extended work area height for more parameters/rows
+    # Extended work area width and height
     components.html(html_content, height=950, scrolling=True)
