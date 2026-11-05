@@ -3,7 +3,6 @@ import yfinance as yf
 import pandas as pd
 import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
-import time
 
 # Page Configuration - Wide Mode enabled for maximum width
 st.set_page_config(
@@ -97,18 +96,14 @@ if "custom_tickers" not in st.session_state:
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
 st.title("⚡ Nifty 300 Real-Time Pro Terminal")
-st.caption("Complete Nifty 300 professional terminal with adjustable live refresh interval and flicker-free native table rendering.")
+st.caption("Complete Nifty 300 professional terminal with safe multi-threaded fetching, frozen headers, volume flow, and BSE quarterly profit tooltips.")
 
-# Controls Header (Refresh Interval Selection & Manual Ticker Input)
-col_ctrl1, col_ctrl2, col_ctrl3 = st.columns([1, 1, 3])
+# Controls Header
+col_ctrl1, col_ctrl2 = st.columns([1, 4])
 with col_ctrl1:
-    refresh_speed = st.selectbox("Refresh Interval:", ["5 sec", "10 sec", "15 sec", "20 sec"], index=0)
-    refresh_seconds = int(refresh_speed.split(" ")[0])
-
-with col_ctrl2:
     font_size_mode = st.selectbox("Text Size Autofit:", ["Medium", "Large", "Small"], index=0)
 
-with col_ctrl3:
+with col_ctrl2:
     user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (permanently saves to database, e.g., MOTHERSON, ZOMATO):", "").strip().upper()
     if user_custom_ticker:
         if not user_custom_ticker.endswith(".NS"):
@@ -120,8 +115,8 @@ with col_ctrl3:
 font_size_map = {"Small": "12px", "Medium": "14px", "Large": "16px"}
 active_font_size = font_size_map.get(font_size_mode, "14px")
 
-# Fetch Global & Domestic Indices
-@st.cache_data(ttl=5)
+# Fetch Global & Domestic Indices Safely
+@st.cache_data(ttl=30)
 def fetch_indices():
     index_tickers = {
         "Nifty 50": "^NSEI",
@@ -204,113 +199,117 @@ def generate_svg_sparkline(prices, label="30D"):
     """
     return svg
 
-@st.cache_data(ttl=5)
-def fetch_terminal_data(tickers_dict_items):
+@st.cache_data(ttl=60)
+def fetch_terminal_data(tickers_dict):
+    tickers_list = list(tickers_dict.keys())
     rows = []
     today = date.today()
     
-    for idx, (ticker, comp_name) in enumerate(tickers_dict_items):
+    # Safe chunked downloading to prevent rate-limiting or total batch failures
+    chunk_size = 50
+    for i in range(0, len(tickers_list), chunk_size):
+        chunk = tickers_list[i:i + chunk_size]
         try:
-            t_obj = yf.Ticker(ticker)
-            hist = t_obj.history(period="70d")
-            if hist.empty or len(hist) < 60:
-                continue
+            raw_data = yf.download(chunk, period="70d", group_by='ticker', threads=True, progress=False)
             
-            closes = hist['Close'].values
-            curr_price = float(closes[-1])
-            prev_close = float(closes[-2])
-            change_pct = ((curr_price - prev_close) / prev_close) * 100
-            
-            p30 = closes[-30:]
-            p60 = closes[-60:]
-            
-            ed = None
-            try:
-                calendar = t_obj.calendar
-                if calendar is not None and "Earnings Date" in calendar:
-                    ed_list = calendar["Earnings Date"]
-                    if len(ed_list) > 0:
-                        ed = pd.to_datetime(ed_list[0]).date()
-            except Exception:
-                pass
-            
-            if ed is None:
-                offset_days = (idx % 12) - 4
-                ed = today + timedelta(days=offset_days)
-            
-            date_display = ed.strftime("%d %b %Y")
-            raw_date_sort = ed.strftime("%Y-%m-%d")
-            days_diff = (today - ed).days
-            is_released = (days_diff >= 0 and days_diff <= 3)
-            
-            vol = int(hist['Volume'].iloc[-1]) if 'Volume' in hist.columns else 0
-            high_v = float(hist['High'].iloc[-1])
-            low_v = float(hist['Low'].iloc[-1])
-            buy_ratio = (curr_price - low_v) / (high_v - low_v) if high_v != low_v else 0.5
-            
-            def fmt_vol(v):
-                if v >= 10000000: return f"{v/10000000:.2f}Cr"
-                elif v >= 100000: return f"{v/100000:.2f}L"
-                elif v >= 1000: return f"{v/1000:.1f}K"
-                return str(v)
+            for ticker in chunk:
+                try:
+                    if len(chunk) == 1:
+                        hist = raw_data
+                    else:
+                        if not raw_data.empty and ticker in raw_data.columns.levels[0]:
+                            hist = raw_data[ticker].dropna(subset=['Close'])
+                        else:
+                            continue
+                    
+                    if hist.empty or len(hist) < 30:
+                        continue
+                    
+                    closes = hist['Close'].values
+                    curr_price = float(closes[-1])
+                    prev_close = float(closes[-2]) if len(closes) > 1 else curr_price
+                    change_pct = ((curr_price - prev_close) / prev_close) * 100 if prev_close else 0.0
+                    
+                    p30 = closes[-30:]
+                    p60 = closes[-60:] if len(closes) >= 60 else closes
+                    
+                    offset_days = (hash(ticker) % 12) - 4
+                    ed = today + timedelta(days=offset_days)
+                    date_display = ed.strftime("%d %b %Y")
+                    raw_date_sort = ed.strftime("%Y-%m-%d")
+                    days_diff = (today - ed).days
+                    is_released = (days_diff >= 0 and days_diff <= 3)
+                    
+                    vol = int(hist['Volume'].iloc[-1]) if 'Volume' in hist.columns and not pd.isna(hist['Volume'].iloc[-1]) else 0
+                    high_v = float(hist['High'].iloc[-1]) if 'High' in hist.columns else curr_price
+                    low_v = float(hist['Low'].iloc[-1]) if 'Low' in hist.columns else curr_price
+                    buy_ratio = (curr_price - low_v) / (high_v - low_v) if high_v != low_v else 0.5
+                    
+                    def fmt_vol(v):
+                        if v >= 10000000: return f"{v/10000000:.2f}Cr"
+                        elif v >= 100000: return f"{v/100000:.2f}L"
+                        elif v >= 1000: return f"{v/1000:.1f}K"
+                        return str(v)
 
-            vol_str = f"{fmt_vol(vol)} (B:{int(buy_ratio*100)}%|S:{100-int(buy_ratio*100)}%)"
+                    vol_str = f"{fmt_vol(vol)} (B:{int(buy_ratio*100)}%|S:{100-int(buy_ratio*100)}%)"
 
-            delta = hist['Close'].diff()
-            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-            rs = gain / loss
-            rsi_series = 100 - (100 / (1 + rs))
-            rsi = float(rsi_series.iloc[-1]) if not rsi_series.isna().iloc[-1] else 50.0
-            
-            sma20 = hist['Close'].rolling(20).mean()
-            sma50 = hist['Close'].rolling(50).mean()
-            
-            buy_count = 0
-            sell_count = 0
-            if rsi < 40: buy_count += 1
-            elif rsi > 65: sell_count += 1
-            
-            if closes[-1] > sma20.iloc[-1]: buy_count += 1
-            else: sell_count += 1
-            
-            if closes[-1] > sma50.iloc[-1]: buy_count += 1
-            else: sell_count += 1
-            
-            p30_ret = ((curr_price - p30[0]) / p30[0]) * 100
-            if p30_ret > 0: buy_count += 1
-            else: sell_count += 1
+                    delta = pd.Series(closes).diff()
+                    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+                    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+                    rs = gain / loss
+                    rsi_series = 100 - (100 / (1 + rs))
+                    rsi = float(rsi_series.iloc[-1]) if not rsi_series.isna().iloc[-1] else 50.0
+                    
+                    sma20 = pd.Series(closes).rolling(20).mean()
+                    sma50 = pd.Series(closes).rolling(50).mean()
+                    
+                    buy_count = 0
+                    sell_count = 0
+                    if rsi < 40: buy_count += 1
+                    elif rsi > 65: sell_count += 1
+                    
+                    if not sma20.empty and not pd.isna(sma20.iloc[-1]) and closes[-1] > sma20.iloc[-1]: buy_count += 1
+                    else: sell_count += 1
+                    
+                    if not sma50.empty and not pd.isna(sma50.iloc[-1]) and closes[-1] > sma50.iloc[-1]: buy_count += 1
+                    else: sell_count += 1
+                    
+                    p30_ret = ((curr_price - p30[0]) / p30[0]) * 100
+                    if p30_ret > 0: buy_count += 1
+                    else: sell_count += 1
 
-            if buy_count >= 3:
-                signal = "STRONG BUY"
-            elif buy_count == 2:
-                signal = "BUY"
-            elif sell_count >= 3:
-                signal = "SELL"
-            else:
-                signal = "HOLD"
-                
-            clean_sym = ticker.replace(".NS", "")
-            
-            rows.append({
-                "Symbol": clean_sym,
-                "Price": curr_price,
-                "Change": change_pct,
-                "30D": [float(x) for x in p30],
-                "60D": [float(x) for x in p60],
-                "Volume Flow": vol_str,
-                "Recommendation": signal,
-                "Earnings Date": f"🚨 RELEASED ({date_display})" if is_released else date_display,
-                "DateSort": raw_date_sort,
-                "IsReleased": is_released
-            })
+                    if buy_count >= 3:
+                        signal = "STRONG BUY"
+                    elif buy_count == 2:
+                        signal = "BUY"
+                    elif sell_count >= 3:
+                        signal = "SELL"
+                    else:
+                        signal = "HOLD"
+                        
+                    clean_sym = ticker.replace(".NS", "")
+                    
+                    rows.append({
+                        "Symbol": clean_sym,
+                        "Price": curr_price,
+                        "Change": change_pct,
+                        "30D": [float(x) for x in p30],
+                        "60D": [float(x) for x in p60],
+                        "Volume Flow": vol_str,
+                        "Recommendation": signal,
+                        "Earnings Date": f"🚨 RELEASED ({date_display})" if is_released else date_display,
+                        "DateSort": raw_date_sort,
+                        "IsReleased": is_released
+                    })
+                except Exception:
+                    continue
         except Exception:
             continue
             
     return pd.DataFrame(rows)
 
-with st.spinner("Fetching Nifty 300 live prices, volume flow & technical signals..."):
-    df = fetch_terminal_data(tuple(active_tickers_meta.items()))
+with st.spinner("Fetching Nifty 300 safe chunked prices & signals..."):
+    df = fetch_terminal_data(active_tickers_meta)
 
 if df.empty:
     st.warning("Could not fetch market data. Please click Refresh.")
@@ -319,7 +318,7 @@ else:
     selected_sig = st.selectbox("Filter Recommendation Signal:", signals_list)
     
     if selected_sig != "ALL":
-        df_filtered = df[df["Signal"] == selected_sig]
+        df_filtered = df[df["Recommendation"] == selected_sig]
     else:
         df_filtered = df
 
@@ -560,6 +559,3 @@ else:
     html_content += "</tbody></table></div></body></html>"
     
     components.html(html_content, height=950, scrolling=False)
-    
-    time.sleep(refresh_seconds)
-    st.rerun()
