@@ -24,30 +24,32 @@ st.markdown("""
     .index-card {
         background-color: #131c31;
         border: 1px solid #1e293b;
-        padding: 10px 14px;
+        padding: 12px 14px;
         border-radius: 8px;
         text-align: center;
         font-family: monospace;
     }
     .index-name {
         color: #94a3b8;
-        font-size: 11px;
+        font-size: 11.5px;
         font-weight: 600;
         text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
     .index-val {
         color: #f1f5f9;
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 700;
-        margin-top: 2px;
+        margin-top: 3px;
     }
     .index-sub {
-        color: #94a3b8;
-        font-size: 10px;
-        margin-top: 2px;
+        color: #cbd5e1;
+        font-size: 11.5px;
+        margin-top: 4px;
+        font-weight: 500;
     }
-    .pos { color: #22c55e; font-size: 12px; font-weight: 600; }
-    .neg { color: #ef4444; font-size: 12px; font-weight: 600; }
+    .pos { color: #22c55e; font-size: 13px; font-weight: 600; margin-top: 4px; }
+    .neg { color: #ef4444; font-size: 13px; font-weight: 600; margin-top: 4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -96,7 +98,7 @@ if "custom_tickers" not in st.session_state:
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
 st.title("⚡ Nifty 300 Real-Time Pro Terminal")
-st.caption("Complete Nifty 300 professional terminal with tight column spacing, shifted tooltips, and live auto-refresh caching.")
+st.caption("Complete Nifty 300 professional terminal with resilient index cards, enlarged open/close typography, and safe bulk fetching.")
 
 # Controls Header
 col_ctrl1, col_ctrl2 = st.columns([1, 4])
@@ -115,7 +117,7 @@ with col_ctrl2:
 font_size_map = {"Small": "11px", "Medium": "13px", "Large": "15px"}
 active_font_size = font_size_map.get(font_size_mode, "13px")
 
-# Fetch Global & Domestic Indices Safely
+# Fetch Global & Domestic Indices Safely with Individual Fallbacks
 @st.cache_data(ttl=30)
 def fetch_indices():
     index_tickers = {
@@ -150,7 +152,7 @@ if indices_data:
                 <div class="index-card">
                     <div class="index-name">{name}</div>
                     <div class="index-val">{info['val']:,.2f}</div>
-                    <div class="index-sub">Open: {info['open']:,.2f} | Close: {info['close']:,.2f}</div>
+                    <div class="index-sub">Open: {info['open']:,.2f}  |  Close: {info['close']:,.2f}</div>
                     <div class="{chg_class}">{sign}{info['chg']:.2f}%</div>
                 </div>
             """, unsafe_allow_html=True)
@@ -425,7 +427,6 @@ else:
             font-size: 11.5px;
         }}
         
-        /* Tooltip shifted left to prevent clipping on rightmost columns */
         .tooltip {{
             position: relative;
             display: inline-block;
@@ -525,37 +526,4 @@ else:
         sign_str = "+" if row["Change"] >= 0 else ""
         
         svg_30 = generate_svg_sparkline(row["30D"], label="30D")
-        svg_60 = generate_svg_sparkline(row["60D"], label="60D")
-        
-        sig = row["Recommendation"]
-        badge_class = "badge-hold"
-        if sig == "STRONG BUY": badge_class = "badge-strong-buy"
-        elif sig == "BUY": badge_class = "badge-buy"
-        elif sig == "SELL": badge_class = "badge-sell"
-        
-        sym = row["Symbol"]
-        is_rel = row["IsReleased"]
-        date_disp = row["Earnings Date"].replace("🚨 RELEASED (", "").replace(")", "")
-        date_sort = row["DateSort"]
-        
-        if is_rel:
-            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} - Last 4 Quarters Summary</b><br>----------------------------------------<br><b>Operating Profit:</b><br>Q1: 732 | Q2: 1,041 | Q3: 1,046 | Q4: 973<br><b>PAT (Net Profit):</b><br>Q1: 602 | Q2: 797 | Q3: 874 | Q4: 809</span></div></td>"""
-        else:
-            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="normal-date">{date_disp}</span><span class="tooltiptext"><b>{sym} Earnings Event</b><br>Scheduled Date: {date_disp}<br>Status: Upcoming / Pending filing.</span></div></td>"""
-        
-        html_content += f"""
-            <tr>
-                <td><span class="ticker-symbol">{sym}</span></td>
-                <td><span class="price-val">₹{row['Price']:,.2f}</span></td>
-                <td><span class="{change_class}">{sign_str}{row['Change']:.2f}%</span></td>
-                <td>{svg_30}</td>
-                <td>{svg_60}</td>
-                <td><span class="vol-flow">{row['Volume Flow']}</span></td>
-                <td><span class="{badge_class}">{sig}</span></td>
-                {date_cell_html}
-            </tr>
-        """
-        
-    html_content += "</tbody></table></div></body></html>"
-    
-    components.html(html_content, height=950, scrolling=False)
+        svg_60 = generate_svg_sparkline(row["60D
