@@ -1,6 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import requests
 import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
 
@@ -53,6 +54,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Create a robust HTTP session with browser headers to prevent rate limits
+session = requests.Session()
+session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+})
+
 # Comprehensive Nifty 300 & Extended Market Universe
 NIFTY_300_BASE = {
     "RELIANCE.NS": "Reliance Industries", "TCS.NS": "Tata Consultancy Services", "HDFCBANK.NS": "HDFC Bank", "INFY.NS": "Infosys", "ICICIBANK.NS": "ICICI Bank",
@@ -98,7 +105,7 @@ if "custom_tickers" not in st.session_state:
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
 st.title("⚡ Nifty 300 Real-Time Pro Terminal")
-st.caption("Complete Nifty 300 professional terminal with resilient index cards, enlarged open/close typography, and safe bulk fetching.")
+st.caption("Complete Nifty 300 professional terminal with custom session-header rate limit protection.")
 
 # Controls Header
 col_ctrl1, col_ctrl2 = st.columns([1, 4])
@@ -117,7 +124,7 @@ with col_ctrl2:
 font_size_map = {"Small": "11px", "Medium": "13px", "Large": "15px"}
 active_font_size = font_size_map.get(font_size_mode, "13px")
 
-# Fetch Global & Domestic Indices Safely with Individual Fallbacks
+# Fetch Indices using the custom session
 @st.cache_data(ttl=30)
 def fetch_indices():
     index_tickers = {
@@ -130,7 +137,8 @@ def fetch_indices():
     data = {}
     for name, ticker in index_tickers.items():
         try:
-            hist = yf.Ticker(ticker).history(period="2d")
+            t = yf.Ticker(ticker, session=session)
+            hist = t.history(period="2d")
             if len(hist) >= 2:
                 curr = float(hist['Close'].iloc[-1])
                 prev = float(hist['Close'].iloc[-2])
@@ -143,7 +151,7 @@ def fetch_indices():
 
 indices_data = fetch_indices()
 if indices_data:
-    cols = st.columns(5)
+    cols = st.columns(len(indices_data))
     for i, (name, info) in enumerate(indices_data.items()):
         with cols[i]:
             chg_class = "pos" if info["chg"] >= 0 else "neg"
@@ -207,11 +215,11 @@ def fetch_terminal_data(tickers_dict):
     rows = []
     today = date.today()
     
-    chunk_size = 50
+    chunk_size = 40
     for i in range(0, len(tickers_list), chunk_size):
         chunk = tickers_list[i:i + chunk_size]
         try:
-            raw_data = yf.download(chunk, period="70d", group_by='ticker', threads=True, progress=False)
+            raw_data = yf.download(chunk, period="70d", group_by='ticker', threads=True, progress=False, session=session)
             
             for ticker in chunk:
                 try:
