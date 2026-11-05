@@ -96,7 +96,7 @@ if "custom_tickers" not in st.session_state:
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
 st.title("⚡ Nifty 300 Real-Time Pro Terminal")
-st.caption("Complete Nifty 300 professional terminal with safe multi-threaded fetching, frozen headers, volume flow, and BSE quarterly profit tooltips.")
+st.caption("Complete Nifty 300 professional terminal with tight column spacing, shifted tooltips, and live auto-refresh caching.")
 
 # Controls Header
 col_ctrl1, col_ctrl2 = st.columns([1, 4])
@@ -112,8 +112,8 @@ with col_ctrl2:
             st.session_state.custom_tickers[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
             st.rerun()
 
-font_size_map = {"Small": "12px", "Medium": "14px", "Large": "16px"}
-active_font_size = font_size_map.get(font_size_mode, "14px")
+font_size_map = {"Small": "11px", "Medium": "13px", "Large": "15px"}
+active_font_size = font_size_map.get(font_size_mode, "13px")
 
 # Fetch Global & Domestic Indices Safely
 @st.cache_data(ttl=30)
@@ -169,7 +169,7 @@ def generate_svg_sparkline(prices, label="30D"):
     min_p, max_p = min(prices), max(prices)
     p_range = max_p - min_p if max_p != min_p else 1.0
 
-    width, height = 120, 35
+    width, height = 110, 32
     points = []
     for i, p in enumerate(prices):
         x = (i / (len(prices) - 1)) * width
@@ -205,7 +205,6 @@ def fetch_terminal_data(tickers_dict):
     rows = []
     today = date.today()
     
-    # Safe chunked downloading to prevent rate-limiting or total batch failures
     chunk_size = 50
     for i in range(0, len(tickers_list), chunk_size):
         chunk = tickers_list[i:i + chunk_size]
@@ -345,6 +344,7 @@ else:
             width: 100%;
             border-collapse: collapse;
             font-size: {active_font_size};
+            table-layout: auto;
         }}
         .terminal-table th {{
             position: sticky;
@@ -353,12 +353,12 @@ else:
             background-color: #131c31;
             color: #94a3b8;
             text-align: left;
-            padding: 10px 10px;
+            padding: 8px 6px;
             font-weight: 600;
             border-bottom: 2px solid #1e293b;
             text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 0.05em;
+            font-size: 10px;
+            letter-spacing: 0.04em;
             cursor: pointer;
             user-select: none;
             white-space: nowrap;
@@ -368,7 +368,7 @@ else:
             color: #f8fafc;
         }}
         .terminal-table td {{
-            padding: 9px 10px;
+            padding: 7px 6px;
             border-bottom: 1px solid #131c31;
             vertical-align: middle;
             white-space: nowrap;
@@ -380,13 +380,13 @@ else:
             color: #38bdf8;
             font-weight: 700;
             font-family: monospace;
-            font-size: 14px;
+            font-size: 13px;
         }}
         .price-val {{
             font-family: monospace;
             font-weight: 600;
             color: #f1f5f9;
-            font-size: 14px;
+            font-size: 13px;
         }}
         .positive {{
             color: #22c55e;
@@ -398,11 +398,11 @@ else:
             font-weight: 600;
             font-family: monospace;
         }}
-        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .vol-flow {{ font-family: monospace; font-size: 11px; }}
+        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 3px 6px; border-radius: 4px; font-weight: 700; font-size: 10.5px; }}
+        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 3px 6px; border-radius: 4px; font-weight: 700; font-size: 10.5px; }}
+        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 3px 6px; border-radius: 4px; font-weight: 700; font-size: 10.5px; }}
+        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 3px 6px; border-radius: 4px; font-weight: 700; font-size: 10.5px; }}
+        .vol-flow {{ font-family: monospace; font-size: 10.5px; }}
         
         @keyframes glowing-blink {{
             0% {{ color: #ef4444; text-shadow: 0 0 2px #ef4444; }}
@@ -411,10 +411,10 @@ else:
         }}
         .blinking-result {{
             font-weight: 800;
-            font-size: 11px;
+            font-size: 10.5px;
             animation: glowing-blink 1.2s infinite;
             background: rgba(56, 189, 248, 0.15);
-            padding: 4px 8px;
+            padding: 3px 6px;
             border-radius: 4px;
             display: inline-block;
         }}
@@ -422,9 +422,10 @@ else:
             color: #f1f5f9;
             font-weight: 600;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11.5px;
         }}
         
+        /* Tooltip shifted left to prevent clipping on rightmost columns */
         .tooltip {{
             position: relative;
             display: inline-block;
@@ -432,7 +433,7 @@ else:
         }}
         .tooltip .tooltiptext {{
             visibility: hidden;
-            width: 250px;
+            width: 240px;
             background-color: #1e293b;
             color: #f8fafc;
             text-align: left;
@@ -441,8 +442,7 @@ else:
             position: absolute;
             z-index: 10;
             bottom: 125%;
-            left: 50%;
-            margin-left: -125px;
+            right: 0%;
             opacity: 0;
             transition: opacity 0.3s;
             font-size: 11px;
