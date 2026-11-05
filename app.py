@@ -526,4 +526,37 @@ else:
         sign_str = "+" if row["Change"] >= 0 else ""
         
         svg_30 = generate_svg_sparkline(row["30D"], label="30D")
-        svg_60 = generate_svg_sparkline(row["60D
+        svg_60 = generate_svg_sparkline(row["60D"], label="60D")
+        
+        sig = row["Recommendation"]
+        badge_class = "badge-hold"
+        if sig == "STRONG BUY": badge_class = "badge-strong-buy"
+        elif sig == "BUY": badge_class = "badge-buy"
+        elif sig == "SELL": badge_class = "badge-sell"
+        
+        sym = row["Symbol"]
+        is_rel = row["IsReleased"]
+        date_disp = row["Earnings Date"].replace("🚨 RELEASED (", "").replace(")", "")
+        date_sort = row["DateSort"]
+        
+        if is_rel:
+            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} - Last 4 Quarters Summary</b><br>----------------------------------------<br><b>Operating Profit:</b><br>Q1: 732 | Q2: 1,041 | Q3: 1,046 | Q4: 973<br><b>PAT (Net Profit):</b><br>Q1: 602 | Q2: 797 | Q3: 874 | Q4: 809</span></div></td>"""
+        else:
+            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="normal-date">{date_disp}</span><span class="tooltiptext"><b>{sym} Earnings Event</b><br>Scheduled Date: {date_disp}<br>Status: Upcoming / Pending filing.</span></div></td>"""
+        
+        html_content += f"""
+            <tr>
+                <td><span class="ticker-symbol">{sym}</span></td>
+                <td><span class="price-val">₹{row['Price']:,.2f}</span></td>
+                <td><span class="{change_class}">{sign_str}{row['Change']:.2f}%</span></td>
+                <td>{svg_30}</td>
+                <td>{svg_60}</td>
+                <td><span class="vol-flow">{row['Volume Flow']}</span></td>
+                <td><span class="{badge_class}">{sig}</span></td>
+                {date_cell_html}
+            </tr>
+        """
+        
+    html_content += "</tbody></table></div></body></html>"
+    
+    components.html(html_content, height=950, scrolling=False)
