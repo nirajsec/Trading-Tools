@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
-from streamlit_autorefresh import st_autorefresh
+import time
 
 # Page Configuration - Wide Mode enabled for maximum width
 st.set_page_config(
@@ -11,9 +11,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-
-# Enable 5-Second Live Auto-Refresh for real-time price action without hitting rate limits
-st_autorefresh(interval=5000, key="live_market_refresh")
 
 # Custom Styling for Market Indices Bar & Full-Width App UI
 st.markdown("""
@@ -100,7 +97,7 @@ if "custom_tickers" not in st.session_state:
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
 st.title("⚡ Nifty 300 Real-Time Pro Terminal")
-st.caption("Complete Nifty 300 professional terminal with 5-second live updates, frozen headers, volume flow, and BSE quarterly profit tooltips.")
+st.caption("Complete Nifty 300 professional terminal with native live auto-refresh, frozen headers, volume flow, and BSE quarterly profit tooltips.")
 
 # Controls Header (Text Size Toggle & Manual Ticker Input)
 col_ctrl1, col_ctrl2 = st.columns([1, 4])
@@ -119,8 +116,8 @@ with col_ctrl2:
 font_size_map = {"Small": "12px", "Medium": "14px", "Large": "16px"}
 active_font_size = font_size_map.get(font_size_mode, "14px")
 
-# Fetch Global & Domestic Indices (Cached for 5 seconds)
-@st.cache_data(ttl=5)
+# Fetch Global & Domestic Indices
+@st.cache_data(ttl=10)
 def fetch_indices():
     index_tickers = {
         "Nifty 50": "^NSEI",
@@ -203,8 +200,7 @@ def generate_svg_sparkline(prices, label="30D"):
     """
     return svg
 
-# Terminal data cached for 10 seconds to ensure near-instant live updating without API blocks
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=15)
 def fetch_terminal_data(tickers_dict_items):
     rows = []
     today = date.today()
@@ -364,7 +360,7 @@ else:
             background-color: #131c31;
             color: #94a3b8;
             text-align: left;
-            padding: 8px 6px;
+            padding: 10px 10px;
             font-weight: 600;
             border-bottom: 2px solid #1e293b;
             text-transform: uppercase;
@@ -379,7 +375,7 @@ else:
             color: #f8fafc;
         }}
         .terminal-table td {{
-            padding: 7px 6px;
+            padding: 9px 10px;
             border-bottom: 1px solid #131c31;
             vertical-align: middle;
             white-space: nowrap;
@@ -570,4 +566,8 @@ else:
         
     html_content += "</tbody></table></div></body></html>"
     
+    # Native rerun loop using time.sleep instead of external missing packages
     components.html(html_content, height=950, scrolling=False)
+    
+    time.sleep(15)
+    st.rerun()
