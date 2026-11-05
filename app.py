@@ -12,8 +12,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Enable 1-Second Live Auto-Refresh
-st_autorefresh(interval=1000, key="live_market_refresh")
+# Enable 5-Second Live Auto-Refresh for real-time price action without hitting rate limits
+st_autorefresh(interval=5000, key="live_market_refresh")
 
 # Custom Styling for Market Indices Bar & Full-Width App UI
 st.markdown("""
@@ -99,8 +99,8 @@ if "custom_tickers" not in st.session_state:
 
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
-st.title("⚡ Nifty 300 Live Pro Terminal")
-st.caption("Complete Nifty 300 professional terminal with 1-sec live auto-refresh, frozen headers, tight column gaps, volume flow, and BSE quarterly profit tooltips.")
+st.title("⚡ Nifty 300 Real-Time Pro Terminal")
+st.caption("Complete Nifty 300 professional terminal with 5-second live updates, frozen headers, volume flow, and BSE quarterly profit tooltips.")
 
 # Controls Header (Text Size Toggle & Manual Ticker Input)
 col_ctrl1, col_ctrl2 = st.columns([1, 4])
@@ -116,11 +116,10 @@ with col_ctrl2:
             st.session_state.custom_tickers[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
             st.rerun()
 
-# Set Font Size based on selector
 font_size_map = {"Small": "12px", "Medium": "14px", "Large": "16px"}
 active_font_size = font_size_map.get(font_size_mode, "14px")
 
-# Fetch Global & Domestic Indices with Open and Close values
+# Fetch Global & Domestic Indices (Cached for 5 seconds)
 @st.cache_data(ttl=5)
 def fetch_indices():
     index_tickers = {
@@ -204,7 +203,8 @@ def generate_svg_sparkline(prices, label="30D"):
     """
     return svg
 
-@st.cache_data(ttl=60)
+# Terminal data cached for 10 seconds to ensure near-instant live updating without API blocks
+@st.cache_data(ttl=10)
 def fetch_terminal_data(tickers_dict_items):
     rows = []
     today = date.today()
@@ -238,12 +238,11 @@ def fetch_terminal_data(tickers_dict_items):
                 offset_days = (idx % 12) - 4
                 ed = today + timedelta(days=offset_days)
             
-            date_display = ed.strftime("%d %b %Y") # Includes Year detail
+            date_display = ed.strftime("%d %b %Y")
             raw_date_sort = ed.strftime("%Y-%m-%d")
             days_diff = (today - ed).days
             is_released = (days_diff >= 0 and days_diff <= 3)
             
-            # Volume & Buy/Sell Flow
             vol = int(hist['Volume'].iloc[-1]) if 'Volume' in hist.columns else 0
             high_v = float(hist['High'].iloc[-1])
             low_v = float(hist['Low'].iloc[-1])
@@ -265,7 +264,6 @@ def fetch_terminal_data(tickers_dict_items):
             buy_pct = int(buy_ratio * 100)
             sell_pct = 100 - buy_pct
 
-            # Technical Indicators & Signal Generation
             delta = hist['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -366,7 +364,7 @@ else:
             background-color: #131c31;
             color: #94a3b8;
             text-align: left;
-            padding: 9px 8px;
+            padding: 8px 6px;
             font-weight: 600;
             border-bottom: 2px solid #1e293b;
             text-transform: uppercase;
@@ -381,7 +379,7 @@ else:
             color: #f8fafc;
         }}
         .terminal-table td {{
-            padding: 8px 8px;
+            padding: 7px 6px;
             border-bottom: 1px solid #131c31;
             vertical-align: middle;
             white-space: nowrap;
@@ -572,5 +570,4 @@ else:
         
     html_content += "</tbody></table></div></body></html>"
     
-    # Render with full 100% width and 950px height
     components.html(html_content, height=950, scrolling=False)
