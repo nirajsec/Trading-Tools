@@ -79,14 +79,14 @@ NIFTY_300_BASE = {
     "COROMANDEL.NS": "Coromandel International", "CROMPTON.NS": "Crompton Greaves", "CUB.NS": "City Union Bank", "DEEPAKFERT.NS": "Deepak Fertilisers",
     "DIXON.NS": "Dixon Technologies", "ESCORTS.NS": "Escorts Kubota", "EXIDEIND.NS": "Exide Industries", "FEDERALBNK.NS": "Federal Bank",
     "GLENMARK.NS": "Glenmark Pharma", "GNFC.NS": "GNFC", "GODREJPROP.NS": "Godrej Properties", "GUJGASLTD.NS": "Gujarat Gas",
-    "HAL.NS": "Hindustan Aeronautics", "HINDPETRO.NS": "HPCL", "IDFCFIRSTB.NS": "IDFC First Bank", "IEX.NS": "Indian Energy Exchange",
+    "HINDPETRO.NS": "HPCL", "IDFCFIRSTB.NS": "IDFC First Bank", "IEX.NS": "Indian Energy Exchange",
     "IGL.NS": "Indraprastha Gas", "IPCALAB.NS": "IPCA Laboratories", "JKCEMENT.NS": "JK Cement", "JUBLFOOD.NS": "Jubilant FoodWorks",
     "LUPIN.NS": "Lupin", "M&MFIN.NS": "M&M Financial", "MANAPPURAM.NS": "Manappuram Finance", "MAXHEALTH.NS": "Max Healthcare",
     "MCX.NS": "Multi Commodity Exchange", "METROPOLIS.NS": "Metropolis Healthcare", "MFSL.NS": "Max Financial Services", "MPHASIS.NS": "Mphasis",
     "MRF.NS": "MRF Limited", "MUTHOOTFIN.NS": "Muthoot Finance", "NAM-INDIA.NS": "Nippon Life India", "NATIONALUM.NS": "National Aluminium",
     "NAVINFLUOR.NS": "Navin Fluorine", "OBEROIRLTY.NS": "Oberoi Realty", "OFSS.NS": "Oracle Financial", "PAGEIND.NS": "Page Industries",
     "PEL.NS": "Piramal Enterprises", "PERSISTENT.NS": "Persistent Systems", "PETRONET.NS": "Petronet LNG", "PVRINOX.NS": "PVR INOX",
-    "RAMCOCEM.NS": "Ramco Cements", "AARTIIND.NS": "Aarti Industries", "LALPATHLAB.NS": "Dr. Lal PathLabs", "POLICYBZR.NS": "PB Fintech"
+    "RAMCOCEM.NS": "Ramco Cements", "AARTIIND.NS": "Aarti Industries", "LALPATHLAB.NS": "Dr. Lal PathLabs"
 }
 
 # Persistent Session State for Custom Tickers
@@ -96,16 +96,25 @@ if "custom_tickers" not in st.session_state:
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
 st.title("⚡ Nifty 300 Pro Market Terminal")
-st.caption("Complete Nifty 300 professional terminal with index open/close metrics, volume buy/sell flow, sparklines, and BSE quarterly profit tooltips.")
+st.caption("Complete Nifty 300 professional terminal with frozen headers, text scaling, index metrics, volume flow, and BSE quarterly profit tooltips.")
 
-# Manual Ticker Input Section with Permanent Storage
-user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (permanently saves to database, e.g., MOTHERSON, ZOMATO):", "").strip().upper()
-if user_custom_ticker:
-    if not user_custom_ticker.endswith(".NS"):
-        user_custom_ticker += ".NS"
-    if user_custom_ticker not in active_tickers_meta:
-        st.session_state.custom_tickers[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
-        st.rerun()
+# Controls Header (Text Size Toggle & Manual Ticker Input)
+col_ctrl1, col_ctrl2 = st.columns([1, 4])
+with col_ctrl1:
+    font_size_mode = st.selectbox("Text Size Autofit:", ["Medium", "Large", "Small"], index=0)
+
+with col_ctrl2:
+    user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (permanently saves to database, e.g., MOTHERSON, ZOMATO):", "").strip().upper()
+    if user_custom_ticker:
+        if not user_custom_ticker.endswith(".NS"):
+            user_custom_ticker += ".NS"
+        if user_custom_ticker not in active_tickers_meta:
+            st.session_state.custom_tickers[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
+            st.rerun()
+
+# Set Font Size based on selector
+font_size_map = {"Small": "11px", "Medium": "13px", "Large": "15px"}
+active_font_size = font_size_map.get(font_size_mode, "13px")
 
 # Fetch Global & Domestic Indices with Open and Close values
 @st.cache_data(ttl=300)
@@ -238,8 +247,6 @@ def fetch_terminal_data(tickers_dict_items):
                 buy_ratio = (curr_price - low_v) / (high_v - low_v)
             else:
                 buy_ratio = 0.5
-            buy_vol = int(vol * buy_ratio)
-            sell_vol = vol - buy_vol
             
             def fmt_vol(v):
                 if v >= 10000000:
@@ -338,18 +345,26 @@ else:
             padding: 0;
             width: 100%;
         }}
+        .table-container {{
+            max-height: 850px;
+            overflow-y: auto;
+            position: relative;
+        }}
         .terminal-table {{
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: {active_font_size};
         }}
         .terminal-table th {{
+            position: sticky;
+            top: 0;
+            z-index: 5;
             background-color: #131c31;
             color: #94a3b8;
             text-align: left;
             padding: 12px 14px;
             font-weight: 600;
-            border-bottom: 1px solid #1e293b;
+            border-bottom: 2px solid #1e293b;
             text-transform: uppercase;
             font-size: 10.5px;
             letter-spacing: 0.05em;
@@ -497,6 +512,7 @@ else:
     </script>
     </head>
     <body>
+    <div class="table-container">
     <table id="stockTable" class="terminal-table">
         <thead>
             <tr>
@@ -532,7 +548,6 @@ else:
         date_disp = row["DateDisplay"]
         date_sort = row["DateSort"]
         
-        # Tooltip displaying Q1-Q4 Operating Profit & PAT data with explicit Q1-Q4 labels
         if is_rel:
             date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} - Last 4 Quarters Summary</b><br>----------------------------------------<br><b>Operating Profit:</b><br>Q1: 732 | Q2: 1,041 | Q3: 1,046 | Q4: 973<br><b>PAT (Net Profit):</b><br>Q1: 602 | Q2: 797 | Q3: 874 | Q4: 809</span></div></td>"""
         else:
@@ -551,7 +566,7 @@ else:
             </tr>
         """
         
-    html_content += "</tbody></table></body></html>"
+    html_content += "</tbody></table></div></body></html>"
     
     # Render with full 100% width and 950px height
-    components.html(html_content, height=950, scrolling=True)
+    components.html(html_content, height=950, scrolling=False)
