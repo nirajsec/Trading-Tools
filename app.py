@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Styling for Market Indices Bar & Full-Width App UI
+# Custom Styling for Market Indices Bar & Terminal
 st.markdown("""
 <style>
     .block-container {
@@ -97,14 +97,18 @@ if "custom_tickers" not in st.session_state:
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
 st.title("⚡ Nifty 300 Real-Time Pro Terminal")
-st.caption("Complete Nifty 300 professional terminal with native live auto-refresh, frozen headers, volume flow, and BSE quarterly profit tooltips.")
+st.caption("Complete Nifty 300 professional terminal with adjustable live refresh interval and flicker-free native table rendering.")
 
-# Controls Header (Text Size Toggle & Manual Ticker Input)
-col_ctrl1, col_ctrl2 = st.columns([1, 4])
+# Controls Header (Refresh Interval Selection & Manual Ticker Input)
+col_ctrl1, col_ctrl2, col_ctrl3 = st.columns([1, 1, 3])
 with col_ctrl1:
-    font_size_mode = st.selectbox("Text Size Autofit:", ["Medium", "Large", "Small"], index=0)
+    refresh_speed = st.selectbox("Refresh Interval:", ["5 sec", "10 sec", "15 sec", "20 sec"], index=0)
+    refresh_seconds = int(refresh_speed.split(" ")[0])
 
 with col_ctrl2:
+    font_size_mode = st.selectbox("Text Size Autofit:", ["Medium", "Large", "Small"], index=0)
+
+with col_ctrl3:
     user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (permanently saves to database, e.g., MOTHERSON, ZOMATO):", "").strip().upper()
     if user_custom_ticker:
         if not user_custom_ticker.endswith(".NS"):
@@ -117,7 +121,7 @@ font_size_map = {"Small": "12px", "Medium": "14px", "Large": "16px"}
 active_font_size = font_size_map.get(font_size_mode, "14px")
 
 # Fetch Global & Domestic Indices
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=5)
 def fetch_indices():
     index_tickers = {
         "Nifty 50": "^NSEI",
@@ -200,7 +204,7 @@ def generate_svg_sparkline(prices, label="30D"):
     """
     return svg
 
-@st.cache_data(ttl=15)
+@st.cache_data(ttl=5)
 def fetch_terminal_data(tickers_dict_items):
     rows = []
     today = date.today()
@@ -242,23 +246,15 @@ def fetch_terminal_data(tickers_dict_items):
             vol = int(hist['Volume'].iloc[-1]) if 'Volume' in hist.columns else 0
             high_v = float(hist['High'].iloc[-1])
             low_v = float(hist['Low'].iloc[-1])
-            if high_v != low_v:
-                buy_ratio = (curr_price - low_v) / (high_v - low_v)
-            else:
-                buy_ratio = 0.5
+            buy_ratio = (curr_price - low_v) / (high_v - low_v) if high_v != low_v else 0.5
             
             def fmt_vol(v):
-                if v >= 10000000:
-                    return f"{v/10000000:.2f}Cr"
-                elif v >= 100000:
-                    return f"{v/100000:.2f}L"
-                elif v >= 1000:
-                    return f"{v/1000:.1f}K"
+                if v >= 10000000: return f"{v/10000000:.2f}Cr"
+                elif v >= 100000: return f"{v/100000:.2f}L"
+                elif v >= 1000: return f"{v/1000:.1f}K"
                 return str(v)
 
-            vol_str = fmt_vol(vol)
-            buy_pct = int(buy_ratio * 100)
-            sell_pct = 100 - buy_pct
+            vol_str = f"{fmt_vol(vol)} (B:{int(buy_ratio*100)}%|S:{100-int(buy_ratio*100)}%)"
 
             delta = hist['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
@@ -302,11 +298,9 @@ def fetch_terminal_data(tickers_dict_items):
                 "Change": change_pct,
                 "30D": [float(x) for x in p30],
                 "60D": [float(x) for x in p60],
-                "VolumeStr": vol_str,
-                "BuyPct": buy_pct,
-                "SellPct": sell_pct,
-                "Signal": signal,
-                "DateDisplay": date_display,
+                "Volume Flow": vol_str,
+                "Recommendation": signal,
+                "Earnings Date": f"🚨 RELEASED ({date_display})" if is_released else date_display,
                 "DateSort": raw_date_sort,
                 "IsReleased": is_released
             })
@@ -534,16 +528,15 @@ else:
         svg_30 = generate_svg_sparkline(row["30D"], label="30D")
         svg_60 = generate_svg_sparkline(row["60D"], label="60D")
         
-        sig = row["Signal"]
+        sig = row["Recommendation"]
         badge_class = "badge-hold"
         if sig == "STRONG BUY": badge_class = "badge-strong-buy"
         elif sig == "BUY": badge_class = "badge-buy"
         elif sig == "SELL": badge_class = "badge-sell"
         
         sym = row["Symbol"]
-        
         is_rel = row["IsReleased"]
-        date_disp = row["DateDisplay"]
+        date_disp = row["Earnings Date"].replace("🚨 RELEASED (", "").replace(")", "")
         date_sort = row["DateSort"]
         
         if is_rel:
@@ -558,7 +551,7 @@ else:
                 <td><span class="{change_class}">{sign_str}{row['Change']:.2f}%</span></td>
                 <td>{svg_30}</td>
                 <td>{svg_60}</td>
-                <td><span class="vol-flow">{row['VolumeStr']} (<span style="color:#22c55e;">B:{row['BuyPct']}%</span>|<span style="color:#ef4444;">S:{row['SellPct']}%</span>)</span></td>
+                <td><span class="vol-flow">{row['Volume Flow']}</span></td>
                 <td><span class="{badge_class}">{sig}</span></td>
                 {date_cell_html}
             </tr>
@@ -566,8 +559,7 @@ else:
         
     html_content += "</tbody></table></div></body></html>"
     
-    # Native rerun loop using time.sleep instead of external missing packages
     components.html(html_content, height=950, scrolling=False)
     
-    time.sleep(15)
+    time.sleep(refresh_seconds)
     st.rerun()
