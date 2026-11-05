@@ -3,6 +3,7 @@ import yfinance as yf
 import pandas as pd
 import streamlit.components.v1 as components
 from datetime import datetime, date, timedelta
+from streamlit_autorefresh import st_autorefresh
 
 # Page Configuration - Wide Mode enabled for maximum width
 st.set_page_config(
@@ -10,6 +11,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# Enable 1-Second Live Auto-Refresh
+st_autorefresh(interval=1000, key="live_market_refresh")
 
 # Custom Styling for Market Indices Bar & Full-Width App UI
 st.markdown("""
@@ -95,8 +99,8 @@ if "custom_tickers" not in st.session_state:
 
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
-st.title("⚡ Nifty 300 Pro Market Terminal")
-st.caption("Complete Nifty 300 professional terminal with frozen headers, text scaling, index metrics, volume flow, and BSE quarterly profit tooltips.")
+st.title("⚡ Nifty 300 Live Pro Terminal")
+st.caption("Complete Nifty 300 professional terminal with 1-sec live auto-refresh, frozen headers, tight column gaps, volume flow, and BSE quarterly profit tooltips.")
 
 # Controls Header (Text Size Toggle & Manual Ticker Input)
 col_ctrl1, col_ctrl2 = st.columns([1, 4])
@@ -113,11 +117,11 @@ with col_ctrl2:
             st.rerun()
 
 # Set Font Size based on selector
-font_size_map = {"Small": "11px", "Medium": "13px", "Large": "15px"}
-active_font_size = font_size_map.get(font_size_mode, "13px")
+font_size_map = {"Small": "12px", "Medium": "14px", "Large": "16px"}
+active_font_size = font_size_map.get(font_size_mode, "14px")
 
 # Fetch Global & Domestic Indices with Open and Close values
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=5)
 def fetch_indices():
     index_tickers = {
         "Nifty 50": "^NSEI",
@@ -170,7 +174,7 @@ def generate_svg_sparkline(prices, label="30D"):
     min_p, max_p = min(prices), max(prices)
     p_range = max_p - min_p if max_p != min_p else 1.0
 
-    width, height = 130, 35
+    width, height = 120, 35
     points = []
     for i, p in enumerate(prices):
         x = (i / (len(prices) - 1)) * width
@@ -200,7 +204,7 @@ def generate_svg_sparkline(prices, label="30D"):
     """
     return svg
 
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=60)
 def fetch_terminal_data(tickers_dict_items):
     rows = []
     today = date.today()
@@ -234,7 +238,7 @@ def fetch_terminal_data(tickers_dict_items):
                 offset_days = (idx % 12) - 4
                 ed = today + timedelta(days=offset_days)
             
-            date_display = ed.strftime("%d %b")
+            date_display = ed.strftime("%d %b %Y") # Includes Year detail
             raw_date_sort = ed.strftime("%Y-%m-%d")
             days_diff = (today - ed).days
             is_released = (days_diff >= 0 and days_diff <= 3)
@@ -362,11 +366,11 @@ else:
             background-color: #131c31;
             color: #94a3b8;
             text-align: left;
-            padding: 12px 14px;
+            padding: 9px 8px;
             font-weight: 600;
             border-bottom: 2px solid #1e293b;
             text-transform: uppercase;
-            font-size: 10.5px;
+            font-size: 11px;
             letter-spacing: 0.05em;
             cursor: pointer;
             user-select: none;
@@ -377,7 +381,7 @@ else:
             color: #f8fafc;
         }}
         .terminal-table td {{
-            padding: 11px 14px;
+            padding: 8px 8px;
             border-bottom: 1px solid #131c31;
             vertical-align: middle;
             white-space: nowrap;
@@ -407,10 +411,10 @@ else:
             font-weight: 600;
             font-family: monospace;
         }}
-        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
         .vol-flow {{ font-family: monospace; font-size: 11px; }}
         
         @keyframes glowing-blink {{
@@ -423,7 +427,7 @@ else:
             font-size: 11px;
             animation: glowing-blink 1.2s infinite;
             background: rgba(56, 189, 248, 0.15);
-            padding: 5px 8px;
+            padding: 4px 8px;
             border-radius: 4px;
             display: inline-block;
         }}
@@ -431,7 +435,7 @@ else:
             color: #f1f5f9;
             font-weight: 600;
             font-family: monospace;
-            font-size: 13px;
+            font-size: 12px;
         }}
         
         .tooltip {{
