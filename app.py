@@ -54,10 +54,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Create a robust HTTP session with browser headers to prevent rate limits
+# Create a robust HTTP session with browser headers
 session = requests.Session()
 session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Referer": "https://finance.yahoo.com"
 })
 
 # Comprehensive Nifty 300 & Extended Market Universe
@@ -105,7 +106,7 @@ if "custom_tickers" not in st.session_state:
 active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
 st.title("⚡ Nifty 300 Real-Time Pro Terminal")
-st.caption("Complete Nifty 300 professional terminal with custom session-header rate limit protection.")
+st.caption("Complete Nifty 300 professional terminal with resilient index cards, enlarged open/close typography, and session-header protection.")
 
 # Controls Header
 col_ctrl1, col_ctrl2 = st.columns([1, 4])
@@ -124,7 +125,7 @@ with col_ctrl2:
 font_size_map = {"Small": "11px", "Medium": "13px", "Large": "15px"}
 active_font_size = font_size_map.get(font_size_mode, "13px")
 
-# Fetch Indices using the custom session
+# Fetch Global & Domestic Indices with Session Handshake
 @st.cache_data(ttl=30)
 def fetch_indices():
     index_tickers = {
@@ -138,7 +139,7 @@ def fetch_indices():
     for name, ticker in index_tickers.items():
         try:
             t = yf.Ticker(ticker, session=session)
-            hist = t.history(period="2d")
+            hist = t.history(period="5d")
             if len(hist) >= 2:
                 curr = float(hist['Close'].iloc[-1])
                 prev = float(hist['Close'].iloc[-2])
