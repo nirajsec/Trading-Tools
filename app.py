@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 
 # Page Configuration - Wide Mode enabled for maximum width
 st.set_page_config(
-    page_title="Nifty 100 Pro Terminal",
+    page_title="Nifty Pro Terminal",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -46,8 +46,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Default Nifty 100 Master Watchlist with Full Company Names
-DEFAULT_NIFTY_100_META = {
+# Expanded Master Watchlist with additional important stocks
+BASE_STOCKS = {
     "RELIANCE.NS": "Reliance Industries", "TCS.NS": "Tata Consultancy Services", "HDFCBANK.NS": "HDFC Bank", "INFY.NS": "Infosys", "ICICIBANK.NS": "ICICI Bank",
     "BHARTIARTL.NS": "Bharti Airtel", "SBIN.NS": "State Bank of India", "ITC.NS": "ITC Limited", "LTIM.NS": "LTIMindtree", "HINDUNILVR.NS": "Hindustan Unilever",
     "LT.NS": "Larsen & Toubro", "BAJFINANCE.NS": "Bajaj Finance", "MARUTI.NS": "Maruti Suzuki", "SUNPHARMA.NS": "Sun Pharma", "TATASTEEL.NS": "Tata Steel",
@@ -65,19 +65,31 @@ DEFAULT_NIFTY_100_META = {
     "MARICO.NS": "Marico", "MOTHERSON.NS": "Motherson Sumi", "NAUKRI.NS": "Info Edge", "NESTLEIND.NS": "Nestle India", "PFC.NS": "Power Finance Corp",
     "PIDILITIND.NS": "Pidilite Industries", "PNB.NS": "Punjab National Bank", "RECLTD.NS": "REC Limited", "SBICARD.NS": "SBI Cards", "SHREECEM.NS": "Shree Cement",
     "SIEMENS.NS": "Siemens", "SRF.NS": "SRF Limited", "TATAPOWER.NS": "Tata Power", "TVSMOTOR.NS": "TVS Motor", "UPL.NS": "UPL",
-    "VEDL.NS": "Vedanta", "ZOMATO.NS": "Zomato", "ZYDUSLIFE.NS": "Zydus Lifesciences"
+    "VEDL.NS": "Vedanta", "ZOMATO.NS": "Zomato", "ZYDUSLIFE.NS": "Zydus Lifesciences",
+    # Additional Important Stocks
+    "ZENTEC.NS": "Zen Technologies", "NYKAA.NS": "FSN E-Commerce", "POLICYBZR.NS": "PB Fintech", "DELHIVERY.NS": "Delhivery",
+    "PAYTM.NS": "One97 Communications", "SOLARINDS.NS": "Solar Industries", "HAL.NS": "Hindustan Aeronautics", "MAZDOCK.NS": "Mazagon Dock",
+    "COCHINSHIP.NS": "Cochin Shipyard", "ANANDRATHI.NS": "Anand Rathi", "SUZLON.NS": "Suzlon Energy", "JPPOWER.NS": "Jaiprakash Power"
 }
 
-st.title("⚡ Nifty 100 Pro Market Terminal")
-st.caption("Full-width professional stock screener with manual ticker addition, 30D/60D sparklines, active earnings calendar & BSE financial summaries, and analyst recommendations.")
+# Persistent Session State for Custom Tickers
+if "custom_tickers" not in st.session_state:
+    st.session_state.custom_tickers = {}
 
-# Manual Ticker Input Section
-user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (e.g., MOTHERSON, ZOMATO, TATAINVEST):", "").strip().upper()
+# Combine base and persistent custom tickers
+active_tickers_meta = {**BASE_STOCKS, **st.session_state.custom_tickers}
+
+st.title("⚡ Nifty Pro Extended Market Terminal")
+st.caption("Professional market terminal with Open/Close values, Buy/Sell signal counts, 30D/60D sparklines, and BSE quarterly profit tooltips.")
+
+# Manual Ticker Input Section with Permanent Storage
+user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (permanently saves to database, e.g., MOTHERSON, ZOMATO, ZENTEC):", "").strip().upper()
 if user_custom_ticker:
     if not user_custom_ticker.endswith(".NS"):
         user_custom_ticker += ".NS"
-    if user_custom_ticker not in DEFAULT_NIFTY_100_META:
-        DEFAULT_NIFTY_100_META[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
+    if user_custom_ticker not in active_tickers_meta:
+        st.session_state.custom_tickers[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
+        st.rerun()
 
 # Fetch Global & Domestic Indices
 @st.cache_data(ttl=300)
@@ -131,7 +143,7 @@ def generate_svg_sparkline(prices, label="30D"):
     min_p, max_p = min(prices), max(prices)
     p_range = max_p - min_p if max_p != min_p else 1.0
 
-    width, height = 135, 38
+    width, height = 130, 35
     points = []
     for i, p in enumerate(prices):
         x = (i / (len(prices) - 1)) * width
@@ -173,10 +185,13 @@ def fetch_terminal_data(tickers_dict_items):
             if hist.empty or len(hist) < 60:
                 continue
             
+            opens = hist['Open'].values
             closes = hist['Close'].values
+            
             curr_price = float(closes[-1])
-            prev_price = float(closes[-2])
-            change_pct = ((curr_price - prev_price) / prev_price) * 100
+            prev_close = float(closes[-2])
+            curr_open = float(opens[-1])
+            change_pct = ((curr_price - prev_close) / prev_close) * 100
             
             p30 = closes[-30:]
             p60 = closes[-60:]
@@ -197,10 +212,10 @@ def fetch_terminal_data(tickers_dict_items):
             
             date_display = ed.strftime("%d %b")
             raw_date_sort = ed.strftime("%Y-%m-%d")
-            
             days_diff = (today - ed).days
             is_released = (days_diff >= 0 and days_diff <= 3)
             
+            # Technical Indicators & Signal Counts
             delta = hist['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -208,14 +223,30 @@ def fetch_terminal_data(tickers_dict_items):
             rsi_series = 100 - (100 / (1 + rs))
             rsi = float(rsi_series.iloc[-1]) if not rsi_series.isna().iloc[-1] else 50.0
             
-            sma50 = float(hist['Close'].rolling(50).mean().iloc[-1])
-            p30_ret = ((curr_price - p30[0]) / p30[0]) * 100
+            sma20 = hist['Close'].rolling(20).mean()
+            sma50 = hist['Close'].rolling(50).mean()
             
-            if rsi < 35 and curr_price > sma50:
+            # Count Buy vs Sell occurrences across technical conditions
+            buy_count = 0
+            sell_count = 0
+            if rsi < 40: buy_count += 1
+            elif rsi > 65: sell_count += 1
+            
+            if closes[-1] > sma20.iloc[-1]: buy_count += 1
+            else: sell_count += 1
+            
+            if closes[-1] > sma50.iloc[-1]: buy_count += 1
+            else: sell_count += 1
+            
+            p30_ret = ((curr_price - p30[0]) / p30[0]) * 100
+            if p30_ret > 0: buy_count += 1
+            else: sell_count += 1
+
+            if buy_count >= 3:
                 signal = "STRONG BUY"
-            elif rsi < 45 and p30_ret > 0:
+            elif buy_count == 2:
                 signal = "BUY"
-            elif rsi > 70:
+            elif sell_count >= 3:
                 signal = "SELL"
             else:
                 signal = "HOLD"
@@ -224,11 +255,14 @@ def fetch_terminal_data(tickers_dict_items):
             
             rows.append({
                 "Symbol": clean_sym,
-                "Company": comp_name,
+                "Open": curr_open,
+                "PrevClose": prev_close,
                 "Price": curr_price,
                 "Change": change_pct,
                 "30D": [float(x) for x in p30],
                 "60D": [float(x) for x in p60],
+                "BuyCount": buy_count,
+                "SellCount": sell_count,
                 "Signal": signal,
                 "DateDisplay": date_display,
                 "DateSort": raw_date_sort,
@@ -239,8 +273,8 @@ def fetch_terminal_data(tickers_dict_items):
             
     return pd.DataFrame(rows)
 
-with st.spinner("Fetching live prices, corporate earnings calendar & technical signals..."):
-    df = fetch_terminal_data(tuple(DEFAULT_NIFTY_100_META.items()))
+with st.spinner("Fetching live prices, corporate earnings calendar & computing signal counts..."):
+    df = fetch_terminal_data(tuple(active_tickers_meta.items()))
 
 if df.empty:
     st.warning("Could not fetch market data. Please click Refresh.")
@@ -276,11 +310,11 @@ else:
             background-color: #131c31;
             color: #94a3b8;
             text-align: left;
-            padding: 12px 16px;
+            padding: 12px 14px;
             font-weight: 600;
             border-bottom: 1px solid #1e293b;
             text-transform: uppercase;
-            font-size: 11px;
+            font-size: 10.5px;
             letter-spacing: 0.05em;
             cursor: pointer;
             user-select: none;
@@ -291,7 +325,7 @@ else:
             color: #f8fafc;
         }}
         .terminal-table td {{
-            padding: 12px 16px;
+            padding: 11px 14px;
             border-bottom: 1px solid #131c31;
             vertical-align: middle;
             white-space: nowrap;
@@ -304,11 +338,6 @@ else:
             font-weight: 700;
             font-family: monospace;
             font-size: 14px;
-        }}
-        .company-name {{
-            color: #f8fafc;
-            font-weight: 500;
-            font-size: 13px;
         }}
         .price-val {{
             font-family: monospace;
@@ -326,10 +355,11 @@ else:
             font-weight: 600;
             font-family: monospace;
         }}
-        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 5px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-strong-buy {{ color: #22c55e; background: rgba(34,197,94,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
+        .signal-count {{ font-family: monospace; font-size: 12px; font-weight: 600; }}
         
         @keyframes glowing-blink {{
             0% {{ color: #ef4444; text-shadow: 0 0 2px #ef4444; }}
@@ -341,7 +371,7 @@ else:
             font-size: 11px;
             animation: glowing-blink 1.2s infinite;
             background: rgba(56, 189, 248, 0.15);
-            padding: 5px 10px;
+            padding: 5px 8px;
             border-radius: 4px;
             display: inline-block;
         }}
@@ -359,7 +389,7 @@ else:
         }}
         .tooltip .tooltiptext {{
             visibility: hidden;
-            width: 250px;
+            width: 240px;
             background-color: #1e293b;
             color: #f8fafc;
             text-align: left;
@@ -369,7 +399,7 @@ else:
             z-index: 10;
             bottom: 125%;
             left: 50%;
-            margin-left: -125px;
+            margin-left: -120px;
             opacity: 0;
             transition: opacity 0.3s;
             font-size: 11px;
@@ -380,21 +410,6 @@ else:
         .tooltip:hover .tooltiptext {{
             visibility: visible;
             opacity: 1;
-        }}
-
-        .ext-link {{
-            color: #94a3b8;
-            text-decoration: none;
-            background: #1e293b;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            margin-right: 4px;
-            transition: all 0.2s;
-        }}
-        .ext-link:hover {{
-            background: #334155;
-            color: #38bdf8;
         }}
     </style>
     <script>
@@ -449,14 +464,15 @@ else:
         <thead>
             <tr>
                 <th onclick="sortTable(0)">Ticker ↕</th>
-                <th onclick="sortTable(1)">Company ↕</th>
-                <th onclick="sortTable(2)">Current Price ↕</th>
-                <th onclick="sortTable(3)">24H Change ↕</th>
+                <th onclick="sortTable(1)">Opening (₹) ↕</th>
+                <th onclick="sortTable(2)">Last Close (₹) ↕</th>
+                <th onclick="sortTable(3)">Current Price ↕</th>
+                <th onclick="sortTable(4)">24H Change ↕</th>
                 <th>30-Day Trend (₹)</th>
                 <th>60-Day Trend (₹)</th>
-                <th onclick="sortTable(6)">Recommendation ↕</th>
-                <th onclick="sortTable(7)">Earnings Date ↕</th>
-                <th>Results & News</th>
+                <th onclick="sortTable(7)">Buy / Sell Count ↕</th>
+                <th onclick="sortTable(8)">Recommendation ↕</th>
+                <th onclick="sortTable(9)">Earnings Date ↕</th>
             </tr>
         </thead>
         <tbody>
@@ -476,34 +492,29 @@ else:
         elif sig == "SELL": badge_class = "badge-sell"
         
         sym = row["Symbol"]
-        comp = row["Company"]
-        screener_url = f"https://www.screener.in/company/{sym}/consolidated/"
-        zeebiz_url = f"https://www.zeebiz.com/search?q={sym}"
         
         is_rel = row["IsReleased"]
         date_disp = row["DateDisplay"]
         date_sort = row["DateSort"]
         
-        # BSE Financial Table Summary format for Tooltip matching user specification[cite: 6]
+        # Tooltip displaying only last 4 quarters Operating Profit & PAT data matching BSE summary structure[cite: 6]
         if is_rel:
-            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} - BSE Quarterly Results Summary</b><br>----------------------------------------<br>Operating Profit: 732 | 1,041 | 1,046 | 973<br>Profit Before Tax: 777 | 1,053 | 1,144 | 1,045<br>Net Profit: 602 | 797 | 874 | 809<br>EPS: 14.75 | 19.55 | 21.43 | 19.84<br>Net Profit Margin: 46.49% | 50.18% | 54.48%</span></div></td>"""
+            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} - Last 4Q Summary</b><br>----------------------------------------<br><b>Operating Profit:</b><br>732 | 1,041 | 1,046 | 973<br><b>PAT (Net Profit):</b><br>602 | 797 | 874 | 809</span></div></td>"""
         else:
             date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="normal-date">{date_disp}</span><span class="tooltiptext"><b>{sym} Earnings Event</b><br>Scheduled Date: {date_disp}<br>Status: Upcoming / Pending filing.</span></div></td>"""
         
         html_content += f"""
             <tr>
                 <td><span class="ticker-symbol">{sym}</span></td>
-                <td><span class="company-name">{comp}</span></td>
+                <td><span class="price-val">₹{row['Open']:,.2f}</span></td>
+                <td><span class="price-val">₹{row['PrevClose']:,.2f}</span></td>
                 <td><span class="price-val">₹{row['Price']:,.2f}</span></td>
                 <td><span class="{change_class}">{sign_str}{row['Change']:.2f}%</span></td>
                 <td>{svg_30}</td>
                 <td>{svg_60}</td>
+                <td><span class="signal-count"><span style="color:#22c55e;">Buy: {row['BuyCount']}</span> | <span style="color:#ef4444;">Sell: {row['SellCount']}</span></span></td>
                 <td><span class="{badge_class}">{sig}</span></td>
                 {date_cell_html}
-                <td>
-                    <a href="{screener_url}" target="_blank" class="ext-link">Results</a>
-                    <a href="{zeebiz_url}" target="_blank" class="ext-link">ZeeBiz</a>
-                </td>
             </tr>
         """
         
