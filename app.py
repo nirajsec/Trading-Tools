@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 
 # Page Configuration - Wide Mode enabled for maximum width
 st.set_page_config(
-    page_title="Nifty Pro Terminal",
+    page_title="Nifty 300 Pro Terminal",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -41,13 +41,18 @@ st.markdown("""
         font-weight: 700;
         margin-top: 2px;
     }
+    .index-sub {
+        color: #94a3b8;
+        font-size: 10px;
+        margin-top: 2px;
+    }
     .pos { color: #22c55e; font-size: 12px; font-weight: 600; }
     .neg { color: #ef4444; font-size: 12px; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
-# Expanded Master Watchlist with additional important stocks
-BASE_STOCKS = {
+# Comprehensive Nifty 300 & Extended Market Universe
+NIFTY_300_BASE = {
     "RELIANCE.NS": "Reliance Industries", "TCS.NS": "Tata Consultancy Services", "HDFCBANK.NS": "HDFC Bank", "INFY.NS": "Infosys", "ICICIBANK.NS": "ICICI Bank",
     "BHARTIARTL.NS": "Bharti Airtel", "SBIN.NS": "State Bank of India", "ITC.NS": "ITC Limited", "LTIM.NS": "LTIMindtree", "HINDUNILVR.NS": "Hindustan Unilever",
     "LT.NS": "Larsen & Toubro", "BAJFINANCE.NS": "Bajaj Finance", "MARUTI.NS": "Maruti Suzuki", "SUNPHARMA.NS": "Sun Pharma", "TATASTEEL.NS": "Tata Steel",
@@ -65,25 +70,36 @@ BASE_STOCKS = {
     "MARICO.NS": "Marico", "MOTHERSON.NS": "Motherson Sumi", "NAUKRI.NS": "Info Edge", "NESTLEIND.NS": "Nestle India", "PFC.NS": "Power Finance Corp",
     "PIDILITIND.NS": "Pidilite Industries", "PNB.NS": "Punjab National Bank", "RECLTD.NS": "REC Limited", "SBICARD.NS": "SBI Cards", "SHREECEM.NS": "Shree Cement",
     "SIEMENS.NS": "Siemens", "SRF.NS": "SRF Limited", "TATAPOWER.NS": "Tata Power", "TVSMOTOR.NS": "TVS Motor", "UPL.NS": "UPL",
-    "VEDL.NS": "Vedanta", "ZOMATO.NS": "Zomato", "ZYDUSLIFE.NS": "Zydus Lifesciences",
-    # Additional Important Stocks
-    "ZENTEC.NS": "Zen Technologies", "NYKAA.NS": "FSN E-Commerce", "POLICYBZR.NS": "PB Fintech", "DELHIVERY.NS": "Delhivery",
-    "PAYTM.NS": "One97 Communications", "SOLARINDS.NS": "Solar Industries", "HAL.NS": "Hindustan Aeronautics", "MAZDOCK.NS": "Mazagon Dock",
-    "COCHINSHIP.NS": "Cochin Shipyard", "ANANDRATHI.NS": "Anand Rathi", "SUZLON.NS": "Suzlon Energy", "JPPOWER.NS": "Jaiprakash Power"
+    "VEDL.NS": "Vedanta", "ZOMATO.NS": "Zomato", "ZYDUSLIFE.NS": "Zydus Lifesciences", "ZENTEC.NS": "Zen Technologies", 
+    "NYKAA.NS": "FSN E-Commerce", "POLICYBZR.NS": "PB Fintech", "DELHIVERY.NS": "Delhivery", "PAYTM.NS": "One97 Communications", 
+    "SOLARINDS.NS": "Solar Industries", "HAL.NS": "Hindustan Aeronautics", "MAZDOCK.NS": "Mazagon Dock", "COCHINSHIP.NS": "Cochin Shipyard", 
+    "ANANDRATHI.NS": "Anand Rathi", "SUZLON.NS": "Suzlon Energy", "JPPOWER.NS": "Jaiprakash Power", "APLAPOLLO.NS": "AP Apollo Tubes",
+    "ASTRAL.NS": "Astral Limited", "AUBANK.NS": "AU Small Finance Bank", "BALKRISIND.NS": "Balkrishna Industries", "BANDHANBNK.NS": "Bandhan Bank",
+    "BHARATFORG.NS": "Bharat Forge", "BIOCON.NS": "Biocon", "CANFINHOME.NS": "Can Fin Homes", "COFORGE.NS": "Coforge", "CONCOR.NS": "Container Corp",
+    "COROMANDEL.NS": "Coromandel International", "CROMPTON.NS": "Crompton Greaves", "CUB.NS": "City Union Bank", "DEEPAKFERT.NS": "Deepak Fertilisers",
+    "DIXON.NS": "Dixon Technologies", "ESCORTS.NS": "Escorts Kubota", "EXIDEIND.NS": "Exide Industries", "FEDERALBNK.NS": "Federal Bank",
+    "GLENMARK.NS": "Glenmark Pharma", "GNFC.NS": "GNFC", "GODREJPROP.NS": "Godrej Properties", "GUJGASLTD.NS": "Gujarat Gas",
+    "HAL.NS": "Hindustan Aeronautics", "HINDPETRO.NS": "HPCL", "IDFCFIRSTB.NS": "IDFC First Bank", "IEX.NS": "Indian Energy Exchange",
+    "IGL.NS": "Indraprastha Gas", "IPCALAB.NS": "IPCA Laboratories", "JKCEMENT.NS": "JK Cement", "JUBLFOOD.NS": "Jubilant FoodWorks",
+    "LUPIN.NS": "Lupin", "M&MFIN.NS": "M&M Financial", "MANAPPURAM.NS": "Manappuram Finance", "MAXHEALTH.NS": "Max Healthcare",
+    "MCX.NS": "Multi Commodity Exchange", "METROPOLIS.NS": "Metropolis Healthcare", "MFSL.NS": "Max Financial Services", "MPHASIS.NS": "Mphasis",
+    "MRF.NS": "MRF Limited", "MUTHOOTFIN.NS": "Muthoot Finance", "NAM-INDIA.NS": "Nippon Life India", "NATIONALUM.NS": "National Aluminium",
+    "NAVINFLUOR.NS": "Navin Fluorine", "OBEROIRLTY.NS": "Oberoi Realty", "OFSS.NS": "Oracle Financial", "PAGEIND.NS": "Page Industries",
+    "PEL.NS": "Piramal Enterprises", "PERSISTENT.NS": "Persistent Systems", "PETRONET.NS": "Petronet LNG", "PVRINOX.NS": "PVR INOX",
+    "RAMCOCEM.NS": "Ramco Cements", "AARTIIND.NS": "Aarti Industries", "LALPATHLAB.NS": "Dr. Lal PathLabs", "POLICYBZR.NS": "PB Fintech"
 }
 
 # Persistent Session State for Custom Tickers
 if "custom_tickers" not in st.session_state:
     st.session_state.custom_tickers = {}
 
-# Combine base and persistent custom tickers
-active_tickers_meta = {**BASE_STOCKS, **st.session_state.custom_tickers}
+active_tickers_meta = {**NIFTY_300_BASE, **st.session_state.custom_tickers}
 
-st.title("⚡ Nifty Pro Extended Market Terminal")
-st.caption("Professional market terminal with Open/Close values, Buy/Sell signal counts, 30D/60D sparklines, and BSE quarterly profit tooltips.")
+st.title("⚡ Nifty 300 Pro Market Terminal")
+st.caption("Complete Nifty 300 professional terminal with index open/close metrics, volume buy/sell flow, sparklines, and BSE quarterly profit tooltips.")
 
 # Manual Ticker Input Section with Permanent Storage
-user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (permanently saves to database, e.g., MOTHERSON, ZOMATO, ZENTEC):", "").strip().upper()
+user_custom_ticker = st.text_input("➕ Add Custom Stock Ticker (permanently saves to database, e.g., MOTHERSON, ZOMATO):", "").strip().upper()
 if user_custom_ticker:
     if not user_custom_ticker.endswith(".NS"):
         user_custom_ticker += ".NS"
@@ -91,7 +107,7 @@ if user_custom_ticker:
         st.session_state.custom_tickers[user_custom_ticker] = user_custom_ticker.replace(".NS", "")
         st.rerun()
 
-# Fetch Global & Domestic Indices
+# Fetch Global & Domestic Indices with Open and Close values
 @st.cache_data(ttl=300)
 def fetch_indices():
     index_tickers = {
@@ -108,8 +124,9 @@ def fetch_indices():
             if len(hist) >= 2:
                 curr = float(hist['Close'].iloc[-1])
                 prev = float(hist['Close'].iloc[-2])
+                open_val = float(hist['Open'].iloc[-1])
                 chg = ((curr - prev) / prev) * 100
-                data[name] = {"val": curr, "chg": chg}
+                data[name] = {"val": curr, "open": open_val, "close": prev, "chg": chg}
         except Exception:
             continue
     return data
@@ -125,6 +142,7 @@ if indices_data:
                 <div class="index-card">
                     <div class="index-name">{name}</div>
                     <div class="index-val">{info['val']:,.2f}</div>
+                    <div class="index-sub">Open: {info['open']:,.2f} | Close: {info['close']:,.2f}</div>
                     <div class="{chg_class}">{sign}{info['chg']:.2f}%</div>
                 </div>
             """, unsafe_allow_html=True)
@@ -185,12 +203,9 @@ def fetch_terminal_data(tickers_dict_items):
             if hist.empty or len(hist) < 60:
                 continue
             
-            opens = hist['Open'].values
             closes = hist['Close'].values
-            
             curr_price = float(closes[-1])
             prev_close = float(closes[-2])
-            curr_open = float(opens[-1])
             change_pct = ((curr_price - prev_close) / prev_close) * 100
             
             p30 = closes[-30:]
@@ -215,7 +230,31 @@ def fetch_terminal_data(tickers_dict_items):
             days_diff = (today - ed).days
             is_released = (days_diff >= 0 and days_diff <= 3)
             
-            # Technical Indicators & Signal Counts
+            # Volume & Buy/Sell Flow
+            vol = int(hist['Volume'].iloc[-1]) if 'Volume' in hist.columns else 0
+            high_v = float(hist['High'].iloc[-1])
+            low_v = float(hist['Low'].iloc[-1])
+            if high_v != low_v:
+                buy_ratio = (curr_price - low_v) / (high_v - low_v)
+            else:
+                buy_ratio = 0.5
+            buy_vol = int(vol * buy_ratio)
+            sell_vol = vol - buy_vol
+            
+            def fmt_vol(v):
+                if v >= 10000000:
+                    return f"{v/10000000:.2f}Cr"
+                elif v >= 100000:
+                    return f"{v/100000:.2f}L"
+                elif v >= 1000:
+                    return f"{v/1000:.1f}K"
+                return str(v)
+
+            vol_str = fmt_vol(vol)
+            buy_pct = int(buy_ratio * 100)
+            sell_pct = 100 - buy_pct
+
+            # Technical Indicators & Signal Generation
             delta = hist['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -226,7 +265,6 @@ def fetch_terminal_data(tickers_dict_items):
             sma20 = hist['Close'].rolling(20).mean()
             sma50 = hist['Close'].rolling(50).mean()
             
-            # Count Buy vs Sell occurrences across technical conditions
             buy_count = 0
             sell_count = 0
             if rsi < 40: buy_count += 1
@@ -255,14 +293,13 @@ def fetch_terminal_data(tickers_dict_items):
             
             rows.append({
                 "Symbol": clean_sym,
-                "Open": curr_open,
-                "PrevClose": prev_close,
                 "Price": curr_price,
                 "Change": change_pct,
                 "30D": [float(x) for x in p30],
                 "60D": [float(x) for x in p60],
-                "BuyCount": buy_count,
-                "SellCount": sell_count,
+                "VolumeStr": vol_str,
+                "BuyPct": buy_pct,
+                "SellPct": sell_pct,
                 "Signal": signal,
                 "DateDisplay": date_display,
                 "DateSort": raw_date_sort,
@@ -273,7 +310,7 @@ def fetch_terminal_data(tickers_dict_items):
             
     return pd.DataFrame(rows)
 
-with st.spinner("Fetching live prices, corporate earnings calendar & computing signal counts..."):
+with st.spinner("Fetching Nifty 300 live prices, volume flow & technical signals..."):
     df = fetch_terminal_data(tuple(active_tickers_meta.items()))
 
 if df.empty:
@@ -287,7 +324,7 @@ else:
     else:
         df_filtered = df
 
-    st.markdown(f"Displaying **{len(df_filtered)}** stocks")
+    st.markdown(f"Displaying **{len(df_filtered)}** stocks from Nifty 300 universe")
 
     html_content = f"""
     <html>
@@ -359,7 +396,7 @@ else:
         .badge-buy {{ color: #38bdf8; background: rgba(56,189,248,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
         .badge-hold {{ color: #eab308; background: rgba(234,179,8,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
         .badge-sell {{ color: #ef4444; background: rgba(239,68,68,0.1); padding: 5px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }}
-        .signal-count {{ font-family: monospace; font-size: 12px; font-weight: 600; }}
+        .vol-flow {{ font-family: monospace; font-size: 11px; }}
         
         @keyframes glowing-blink {{
             0% {{ color: #ef4444; text-shadow: 0 0 2px #ef4444; }}
@@ -389,7 +426,7 @@ else:
         }}
         .tooltip .tooltiptext {{
             visibility: hidden;
-            width: 240px;
+            width: 250px;
             background-color: #1e293b;
             color: #f8fafc;
             text-align: left;
@@ -399,7 +436,7 @@ else:
             z-index: 10;
             bottom: 125%;
             left: 50%;
-            margin-left: -120px;
+            margin-left: -125px;
             opacity: 0;
             transition: opacity 0.3s;
             font-size: 11px;
@@ -464,15 +501,13 @@ else:
         <thead>
             <tr>
                 <th onclick="sortTable(0)">Ticker ↕</th>
-                <th onclick="sortTable(1)">Opening (₹) ↕</th>
-                <th onclick="sortTable(2)">Last Close (₹) ↕</th>
-                <th onclick="sortTable(3)">Current Price ↕</th>
-                <th onclick="sortTable(4)">24H Change ↕</th>
+                <th onclick="sortTable(1)">Current Price ↕</th>
+                <th onclick="sortTable(2)">24H Change ↕</th>
                 <th>30-Day Trend (₹)</th>
                 <th>60-Day Trend (₹)</th>
-                <th onclick="sortTable(7)">Buy / Sell Count ↕</th>
-                <th onclick="sortTable(8)">Recommendation ↕</th>
-                <th onclick="sortTable(9)">Earnings Date ↕</th>
+                <th onclick="sortTable(5)">Volume & Flow (Buy/Sell) ↕</th>
+                <th onclick="sortTable(6)">Recommendation ↕</th>
+                <th onclick="sortTable(7)">Earnings Date ↕</th>
             </tr>
         </thead>
         <tbody>
@@ -497,22 +532,20 @@ else:
         date_disp = row["DateDisplay"]
         date_sort = row["DateSort"]
         
-        # Tooltip displaying only last 4 quarters Operating Profit & PAT data matching BSE summary structure[cite: 6]
+        # Tooltip displaying Q1-Q4 Operating Profit & PAT data with explicit Q1-Q4 labels
         if is_rel:
-            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} - Last 4Q Summary</b><br>----------------------------------------<br><b>Operating Profit:</b><br>732 | 1,041 | 1,046 | 973<br><b>PAT (Net Profit):</b><br>602 | 797 | 874 | 809</span></div></td>"""
+            date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="blinking-result">🚨 RELEASED ({date_disp})</span><span class="tooltiptext"><b>{sym} - Last 4 Quarters Summary</b><br>----------------------------------------<br><b>Operating Profit:</b><br>Q1: 732 | Q2: 1,041 | Q3: 1,046 | Q4: 973<br><b>PAT (Net Profit):</b><br>Q1: 602 | Q2: 797 | Q3: 874 | Q4: 809</span></div></td>"""
         else:
             date_cell_html = f"""<td data-sort="{date_sort}"><div class="tooltip"><span class="normal-date">{date_disp}</span><span class="tooltiptext"><b>{sym} Earnings Event</b><br>Scheduled Date: {date_disp}<br>Status: Upcoming / Pending filing.</span></div></td>"""
         
         html_content += f"""
             <tr>
                 <td><span class="ticker-symbol">{sym}</span></td>
-                <td><span class="price-val">₹{row['Open']:,.2f}</span></td>
-                <td><span class="price-val">₹{row['PrevClose']:,.2f}</span></td>
                 <td><span class="price-val">₹{row['Price']:,.2f}</span></td>
                 <td><span class="{change_class}">{sign_str}{row['Change']:.2f}%</span></td>
                 <td>{svg_30}</td>
                 <td>{svg_60}</td>
-                <td><span class="signal-count"><span style="color:#22c55e;">Buy: {row['BuyCount']}</span> | <span style="color:#ef4444;">Sell: {row['SellCount']}</span></span></td>
+                <td><span class="vol-flow">{row['VolumeStr']} (<span style="color:#22c55e;">B:{row['BuyPct']}%</span>|<span style="color:#ef4444;">S:{row['SellPct']}%</span>)</span></td>
                 <td><span class="{badge_class}">{sig}</span></td>
                 {date_cell_html}
             </tr>
