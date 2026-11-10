@@ -1,0 +1,38 @@
+[
+    {
+        "Symbol": "RELIANCE",
+        "Price": 1284.50,
+        "Change": 1.25,
+        "30D": [1200, 1210, 1230, 1220, 1250, 1284.5],
+        "60D": [1150, 1180, 1200, 1220, 1250, 1284.5],
+        "Volume Flow": "45.20L (B:62%|S:38%)",
+        "Recommendation": "STRONG BUY",
+        "Earnings Date": "15 Nov 2026",
+        "DateSort": "2026-11-15",
+        "IsReleased": false
+    },
+    {
+        "Symbol": "TCS",
+        "Price": 4120.00,
+        "Change": -0.45,
+        "30D": [4150, 4140, 4130, 4125, 4110, 4120],
+        "60D": [4000, 4050, 4100, 4125, 4110, 4120],
+        "Volume Flow": "12.40L (B:41%|S:59%)",
+        "Recommendation": "HOLD",
+        "Earnings Date": "18 Nov 2026",
+        "DateSort": "2026-11-18",
+        "IsReleased": false
+    },
+    {
+        "Symbol": "HDFCBANK",
+        "Price": 1750.25,
+        "Change": 0.85,
+        "30D": [1700, 1710, 1720, 1735, 1740, 1750.25],
+        "60D": [1680, 1695, 1710, 1735, 1740, 1750.25],
+        "Volume Flow": "68.90L (B:70%|S:30%)",
+        "Recommendation": "STRONG BUY",
+        "Earnings Date": "10 Nov 2026",
+        "DateSort": "2026-11-10",
+        "IsReleased": true
+    }
+]
